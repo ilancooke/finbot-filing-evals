@@ -1,0 +1,14 @@
+{
+  "statement_title_raw": null,
+  "units_raw": null,
+  "unexpected": "must be rejected",
+  "rows": [
+    {"row_index": 0, "row_path_raw": ["Net sales"], "row_kind": "data"}
+  ],
+  "columns": [
+    {"column_index": 0, "column_path_raw": ["2026"]}
+  ],
+  "cells": [
+    {"row_index": 0, "column_index": 0, "value_raw": "1"}
+  ]
+}

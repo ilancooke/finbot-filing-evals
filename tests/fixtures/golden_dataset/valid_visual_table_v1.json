@@ -1,0 +1,49 @@
+{
+  "statement_title_raw": "CONDENSED CONSOLIDATED STATEMENTS OF OPERATIONS (Unaudited)",
+  "units_raw": "(In millions, except per-share amounts)",
+  "rows": [
+    {
+      "row_index": 0,
+      "row_path_raw": ["Net sales"],
+      "row_kind": "section_heading"
+    },
+    {
+      "row_index": 1,
+      "row_path_raw": ["Net sales", "Products¹", "Domestic"],
+      "row_kind": "data"
+    },
+    {
+      "row_index": 2,
+      "row_path_raw": ["Net sales", "Services"],
+      "row_kind": "data"
+    }
+  ],
+  "columns": [
+    {
+      "column_index": 0,
+      "column_path_raw": ["Three Months Ended", "June 27, 2026"]
+    },
+    {
+      "column_index": 1,
+      "column_path_raw": ["Three Months Ended", "June 28, 2025"]
+    },
+    {
+      "column_index": 2,
+      "column_path_raw": ["Nine Months Ended", "June 27, 2026"]
+    },
+    {
+      "column_index": 3,
+      "column_path_raw": ["Nine Months Ended", "June 28, 2025"]
+    }
+  ],
+  "cells": [
+    {"row_index": 1, "column_index": 0, "value_raw": " 78,678 "},
+    {"row_index": 1, "column_index": 1, "value_raw": "74,100"},
+    {"row_index": 1, "column_index": 2, "value_raw": "231,801"},
+    {"row_index": 1, "column_index": 3, "value_raw": "220,000"},
+    {"row_index": 2, "column_index": 0, "value_raw": "(171)"},
+    {"row_index": 2, "column_index": 1, "value_raw": ""},
+    {"row_index": 2, "column_index": 2, "value_raw": "$41,000"},
+    {"row_index": 2, "column_index": 3, "value_raw": "—"}
+  ]
+}
