@@ -16,10 +16,10 @@ Initially it contains 13 filing packages, 27 HTML documents, and 34 observations
 (25 reported and 9 adjusted). Forms: eight 8-Ks, two 6-Ks, two 10-Qs, one 10-K.
 Counts are an initial reference, not constants: edits can add/delete observations.
 The previous screenshot pipeline has been removed without an archive. Step 1 is
-complete: dataset validation/models, the read-only Streamlit shell, launch script,
-`review` dependency extra and offline tests exist. The core dependency is
-`jsonschema`. The screen provides plain text previews and saved filing-wide labels;
-formatted viewing, editing, persistence and confirmation remain future steps.
+complete, and Step 2 adds formatted viewing, readable text and original downloads.
+Dataset validation/models, the read-only Streamlit shell, launch script, `review`
+dependency extra and offline tests exist. The core dependency is `jsonschema`.
+Editing, persistence and confirmation remain future steps.
 
 ## Cleanup baseline
 
@@ -57,7 +57,7 @@ implementation work is Step 1. Do not recreate the deleted screenshot code.
 | Step | Deliverable | Prerequisite | Status |
 | --- | --- | --- | --- |
 | 1 | Dataset foundation and read-only app shell | Existing draft dataset | Complete |
-| 2 | Document viewer | Step 1 | Pending |
+| 2 | Document viewer | Step 1 | Complete |
 | 3 | Editable labels and validation | Step 2 | Pending |
 | 4 | Durable saves and synchronized exports | Step 3 | Pending |
 | 5 | Confirmation and guarded navigation | Step 4 | Pending |
@@ -259,16 +259,16 @@ derived exports and `integrity.json` during saves belongs to Step 4.
 Prerequisite: Step 1 loader and app shell. Deliver `review/viewer.py` and viewer
 checks; use the loader's source paths and artifact metadata.
 
-- [ ] Render the selected original HTML in an isolated display-only viewer,
+- [x] Render the selected original HTML in an isolated display-only viewer,
   preserving tables and useful inline formatting without changing source bytes.
-- [ ] Prevent filing scripts and external asset/network loads from executing.
+- [x] Prevent filing scripts and external asset/network loads from executing.
   Do not pass raw SEC HTML into an embedding mode that executes it by default.
-- [ ] Keep filing-wide labels visible while switching attachments; do not imply
+- [x] Keep filing-wide labels visible while switching attachments; do not imply
   every value appears in whichever attachment is currently selected.
-- [ ] Offer readable text fallback and original-file download. Upstream selection
+- [x] Offer readable text fallback and original-file download. Upstream selection
   omitted images/stylesheets: missing assets must not trigger downloads or hide
   accessible text. Do not promise pixel-identical rendering.
-- [ ] Use EX-99.1 as the initial attachment when available, otherwise the first
+- [x] Use EX-99.1 as the initial attachment when available, otherwise the first
   manifest artifact; preserve a user's selected attachment within the filing.
 
 Acceptance: representative synthetic nested tables and script-containing HTML
@@ -277,7 +277,57 @@ works when no precomputed review text exists. Manually inspect ASML and TSM
 releases plus CMC/RTX/GM long reports if the sample is available. Source hashes
 remain unchanged. App remains read-only.
 
-Handoff: Pending. Record viewer approach, tested layouts, and limitations.
+Handoff (2026-10-20): complete. Implementation:
+
+- `review/viewer.py`: HTML5 byte parsing (including encoding declarations),
+  Bleach element/attribute allowlists and tinycss2 inline-style filtering preserve
+  nested tables, spans, typography, alignment and table borders. Active subtrees,
+  resource attributes, event handlers, links and unsafe/hiding CSS are removed.
+  Images retain available alt text. No asset fetching or source rewriting occurs.
+- `sanitized_html(raw)` creates a display derivative with a restrictive CSP:
+  default/script sources, forms and base URLs are blocked; safe inline styles are
+  permitted. `viewer_frame(raw)` escapes that derivative into an iframe with an
+  empty sandbox and no-referrer policy. Only the generated wrapper is passed to
+  `st.iframe` (or the older components API when unavailable), never raw SEC HTML.
+- `plain_text_preview(raw)` reads original bytes without precomputed review text,
+  retaining text/table separators and omitting active/hidden XBRL headers.
+  `initial_attachment(documents)` prefers EX-99.1, otherwise manifest order.
+- `review/app.py`: formatted/text view selection, exact original-file download,
+  filing-wide labels/notes alongside the document, and separate non-widget
+  attachment state keyed by dataset/case so choices survive filing switches.
+- `pyproject.toml`, README and `tests/test_review_{viewer,app}.py`: optional HTML
+  dependencies, operating/display-limit docs, nested/malformed/hostile markup and
+  CSS checks, encoding/alt-text fallback, both Streamlit embedding paths, original
+  download bytes, attachment retention and read-only navigation checks.
+
+Checks: Python 3.14.8 repo-local environment; editable `.[dev,review]` installation;
+compileall; import/version; 112 passing tests with network connections blocked;
+`pip check`; wheel build and packaged viewer/schema checks. A sandboxed pip build
+initially could not resolve PyPI; rerunning installation/build with network access
+succeeded without changing build requirements.
+
+Read-only sample smoke rendered/extracted all 27 documents across 13 filings and
+34 observations. Firefox inspection used a disposable bundle copy and Streamlit
+on localhost port 8512: ASML and TSM releases, CMC annual report, RTX/GM quarterly
+reports, document scrolling and GM text fallback were inspected. ASML financial
+tables and TSM original-currency text remained readable; long-report covers and
+inline formatting rendered. A separate localhost browser probe rendered a nested
+table plus hostile scripts, event handlers, frames, stylesheet/image/CSS loads.
+No script marker executed and no forbidden endpoint was requested. An additional
+QA-only frame deliberately bypassed sanitization to verify CSP/sandbox blocking;
+it also made no asset/script requests. The probe log contained only its page and
+favicon requests. All real-bundle and QA-copy file hashes remained unchanged.
+Normal tests use synthetic fixtures and never depend on this sample or probe.
+
+Limitations: rendering is not pixel-identical. Images/stylesheets/fonts are not
+loaded; safe inline styles only are retained; source links (including a report's
+table of contents) are inert. Wide tables may need horizontal scrolling, source
+font sizes can be small, and text fallback linearizes layout. Attachment choices
+are session-only; no edits, dataset saves, confirmation or catalog writes exist.
+Original downloads do not inherit the app's viewer protections.
+
+Next action: Step 3, editable filing-wide labels and validation/session state,
+with no disk writes. Keep the viewer and attachment selection behavior intact.
 
 ## Step 3 — Editable labels and validation
 

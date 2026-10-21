@@ -1,55 +1,18 @@
-"""Step 1 inspection shell: no editing, saving, confirmation or active HTML."""
+"""Read-only document and filing-wide label inspection."""
 
 from collections.abc import Sequence
 from hashlib import sha256
-from html.parser import HTMLParser
 
 from .config import parse_dataset_root
 from .dataset import ReviewDataset, load_dataset
 from .errors import ReviewError
 from .validation import METRICS
+from .viewer import initial_attachment, plain_text_preview, viewer_frame
 
 _METRIC_NAMES = {
     "reported_diluted_eps": "Reported diluted EPS",
     "adjusted_diluted_eps": "Adjusted diluted EPS",
 }
-
-
-class _PreviewText(HTMLParser):
-    """Extract plain text only; original markup is never sent to an HTML renderer."""
-
-    def __init__(self) -> None:
-        super().__init__(convert_charrefs=True)
-        self.parts: list[str] = []
-        self.ignored: list[str] = []
-
-    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
-        if tag in {"head", "script", "style", "ix:header"}:
-            self.ignored.append(tag)
-        elif not self.ignored and tag in {"p", "div", "tr", "br", "h1", "h2", "h3", "section"}:
-            self.parts.append("\n")
-
-    def handle_endtag(self, tag: str) -> None:
-        if self.ignored:
-            if tag == self.ignored[-1]:
-                self.ignored.pop()
-        elif tag in {"p", "div", "tr", "h1", "h2", "h3", "section"}:
-            self.parts.append("\n")
-        elif tag in {"td", "th"}:
-            self.parts.append(" | ")
-
-    def handle_data(self, data: str) -> None:
-        if not self.ignored and data.strip():
-            self.parts.append(data.strip() + " ")
-
-
-def plain_text_preview(raw: bytes) -> str:
-    """Best-effort readable text, never code/HTML execution or external loading."""
-    parser = _PreviewText()
-    parser.feed(raw.decode("utf-8", errors="replace"))
-    return "\n".join(
-        " ".join(line.split()) for line in "".join(parser.parts).splitlines() if line.strip()
-    )
 
 
 def _show_dataset(dataset: ReviewDataset) -> None:
@@ -77,17 +40,49 @@ def _show_dataset(dataset: ReviewDataset) -> None:
     with left:
         st.subheader("Document")
         documents = {document.artifact_id: document for document in case.documents}
+        # Keep a non-widget state key: Streamlit removes hidden widget state
+        # when another filing is selected, even with case-specific widget keys.
+        selection_key = f"{namespace}:{case.case_id}:selected_attachment"
+        saved_attachment = st.session_state.get(selection_key, initial_attachment(case.documents))
+        options = list(documents)
         artifact_id = st.selectbox(
-            "Attachment", options=list(documents), key=f"{namespace}:{case.case_id}:attachment",
+            "Attachment", options=options,
+            index=options.index(saved_attachment) if saved_attachment in documents else 0,
+            key=f"{namespace}:{case.case_id}:attachment",
             format_func=lambda key: f"{documents[key].document_type or 'Document'} · {documents[key].filename}",
         )
+        st.session_state[selection_key] = artifact_id
         document = documents[artifact_id]
-        st.caption("Plain text preview. Formatted document display is planned for Step 2.")
-        text = plain_text_preview(document.read_bytes())
-        if text:
-            st.code(text, language=None, wrap_lines=True, height=620)
+        raw = document.read_bytes()
+        st.caption(
+            "Display-only HTML with tables and inline formatting. Scripts, links and external assets "
+            "are disabled; images and stylesheets may be missing. Layout may differ from the original."
+        )
+        mode = st.radio(
+            "Document view", ["Formatted HTML", "Readable text"], horizontal=True,
+            key=f"{namespace}:document_view",
+        )
+        if mode == "Formatted HTML":
+            # Embed only our wrapper, never raw source. The inner frame has no
+            # sandbox permissions, independent of Streamlit's outer frame.
+            if hasattr(st, "iframe"):
+                st.iframe(viewer_frame(raw), height=700)
+            else:  # Compatibility with the supported Streamlit 1.50 releases.
+                import streamlit.components.v1 as components
+
+                components.html(viewer_frame(raw), height=700, scrolling=False)
         else:
-            st.info("No readable text was found in this document.")
+            text = plain_text_preview(raw)
+            if text:
+                st.code(text, language=None, wrap_lines=True, height=680)
+            else:
+                st.info("No readable text was found in this document.")
+        st.download_button(
+            "Download original HTML", data=raw, file_name=document.filename,
+            mime="text/html", on_click="ignore",
+            key=f"{namespace}:{case.case_id}:{artifact_id}:download",
+            help="Unmodified source file. Viewer protections apply only inside this app.",
+        )
     with right:
         st.subheader("Filing EPS values")
         st.caption("These saved labels cover all attachments in the selected filing.")

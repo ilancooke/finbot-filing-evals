@@ -5,11 +5,11 @@ SEC documents collected by `finbot-filings`. The immediate implementation target
 is a local Streamlit UI for inspecting documents, correcting reported/adjusted
 diluted EPS labels, and confirming a golden dataset for later evaluation.
 
-**Current state:** Step 1 is implemented. A read-only Streamlit app loads and
+**Current state:** Steps 1 and 2 are implemented. A read-only Streamlit app loads and
 validates the document EPS draft dataset, with filing/attachment selectors,
-plain text document previews, saved EPS values, review notes and status.
-Formatted document viewing is next; editing, saving and confirmation are not
-implemented yet. The previous screenshot pipeline has been removed.
+isolated formatted HTML viewing, readable text fallback, original-file downloads,
+saved EPS values, review notes and status. Editing, saving and confirmation are
+not implemented yet. The previous screenshot pipeline has been removed.
 
 ## Start a new implementation session
 
@@ -91,11 +91,29 @@ silently substitute the earlier EPS corpus.
 
 ## Review workflow
 
-The current read-only screen displays original document text beside filing-wide
-labels. Select a filing in the sidebar and an attachment in the document pane.
-Values remain decimal strings; unknown start dates and review notes stay visible.
-The preview strips markup, scripts and styles; it does not preserve table layout.
-Formatted, isolated HTML viewing belongs to Step 2.
+The current read-only screen displays a formatted derivative of the original
+HTML beside filing-wide labels. Select a filing in the sidebar and an attachment
+in the document pane. The initial attachment is EX-99.1 when available, otherwise
+the first manifest artifact. Attachment choices survive switching away and back
+within the current session. Labels cover the entire filing package; they need
+not appear in the currently selected attachment. Values remain decimal strings;
+unknown start dates and review notes stay visible.
+
+Choose **Readable text** for text extracted directly from the original, without
+requiring precomputed `review-text/` files. **Download original HTML** returns
+the exact source bytes and filename. The app's viewer protections apply inside
+the app; downloaded originals are unchanged.
+
+The formatted viewer preserves nested tables, cell spans, typography, alignment,
+and allowed inline CSS. HTML5 parsing and allowlist sanitization remove active
+elements, resource attributes, event handlers and unsafe CSS. The result runs
+inside an iframe with an empty sandbox and a Content Security Policy blocking
+scripts, network resources, forms and base URLs. Only this generated wrapper,
+never raw filing HTML, is passed to Streamlit's embedding API. Links are inert,
+images show available alt text, and external stylesheets, images and fonts are
+not fetched. Source bytes are never changed. Missing assets and removed styling
+mean this is not a pixel-identical rendering; wide tables can require horizontal
+scrolling. Use text fallback if a source layout is difficult to read.
 
 The UI will show a document beside the filing-wide editable EPS table, with
 attachment switching, add/delete rows, Save changes, and Confirm and next.
@@ -163,9 +181,11 @@ and duplicate-period validation; failures raise `ReviewError` with context.
 ## Checks
 
 The core loader requires `jsonschema`. The `dev` extra installs pytest; the
-optional `review` extra installs Streamlit, pandas and PyArrow. Loading a dataset
-does not import the UI dependencies. The former screenshot tests were removed;
-the new tests cover the dataset contract, path/source validation and app shell.
+optional `review` extra installs Streamlit, pandas, PyArrow, Bleach, html5lib and
+tinycss2. Re-run the editable install command after updating to Step 2 to install
+the HTML tooling. Loading a dataset does not import the UI dependencies. The
+former screenshot tests were removed; the new tests cover the dataset contract,
+path/source validation, viewer isolation/sanitization and app navigation/downloads.
 
 Compile and verify the installed package:
 
