@@ -5,11 +5,12 @@ SEC documents collected by `finbot-filings`. The immediate implementation target
 is a local Streamlit UI for inspecting documents, correcting reported/adjusted
 diluted EPS labels, and confirming a golden dataset for later evaluation.
 
-**Current state:** Steps 1 and 2 are implemented. A read-only Streamlit app loads and
+**Current state:** Steps 1–3 are implemented. A local Streamlit app loads and
 validates the document EPS draft dataset, with filing/attachment selectors,
 isolated formatted HTML viewing, readable text fallback, original-file downloads,
-saved EPS values, review notes and status. Editing, saving and confirmation are
-not implemented yet. The previous screenshot pipeline has been removed.
+session-only EPS editing, row validation, review notes and saved status. Saving
+and confirmation are not implemented yet. The app writes no dataset files.
+The previous screenshot pipeline has been removed.
 
 ## Start a new implementation session
 
@@ -91,13 +92,29 @@ silently substitute the earlier EPS corpus.
 
 ## Review workflow
 
-The current read-only screen displays a formatted derivative of the original
+The current screen displays a formatted derivative of the original
 HTML beside filing-wide labels. Select a filing in the sidebar and an attachment
 in the document pane. The initial attachment is EX-99.1 when available, otherwise
 the first manifest artifact. Attachment choices survive switching away and back
 within the current session. Labels cover the entire filing package; they need
 not appear in the currently selected attachment. Values remain decimal strings;
 unknown start dates and review notes stay visible.
+
+Edit the single **Filing EPS values** table to change EPS type, value, currency,
+period or dates. Add a row at the bottom, or select rows to delete them. Both
+metrics can be empty, including deleting the last observation. A wholly blank new
+row is unused; partial rows show errors with their one-based table row number.
+Use decimal strings such as `4.60` or `-0.50`, uppercase three-letter currencies
+and ISO `YYYY-MM-DD` dates. Blank starts remain null and are highlighted; end dates
+are required. Calendar dates, date order and duplicate periods are validated.
+
+Edits survive app reruns, attachment changes and document view changes within the
+session. **Unsaved changes** includes invalid/partial rows. Filing selection is
+disabled while edits are pending; choose **Discard changes** to restore the opened
+saved labels and unlock it. Returning all values to their saved state also clears
+the unsaved indicator. Review notes and saved status are shown separately and are
+not edited by the table. These session-only edits are lost when the session ends;
+there is no Save or Confirm action yet.
 
 Choose **Readable text** for text extracted directly from the original, without
 requiring precomputed `review-text/` files. **Download original HTML** returns
@@ -115,9 +132,9 @@ not fetched. Source bytes are never changed. Missing assets and removed styling
 mean this is not a pixel-identical rendering; wide tables can require horizontal
 scrolling. Use text fallback if a source layout is difficult to read.
 
-The UI will show a document beside the filing-wide editable EPS table, with
-attachment switching, add/delete rows, Save changes, and Confirm and next.
-Saving corrections and confirming a filing are distinct actions. Confirmation
+Later steps will add Save changes and Confirm and next beside the existing
+document viewer and filing-wide editor. Saving corrections and confirming a
+filing are distinct actions. Confirmation
 covers the complete package; changing a confirmed label reopens its review.
 Saved progress must survive restart. The dataset becomes human-reviewed only
 when all its filings have been confirmed.
@@ -178,6 +195,13 @@ detection. `SourceDocument.read_bytes()` rechecks confinement and source integri
 `review.validation.validate_labels()` provides UI-independent schema, date-order
 and duplicate-period validation; failures raise `ReviewError` with context.
 
+`review.editor.labels_to_rows()` / `rows_to_labels()` convert between the table
+and the two-array extraction payload without numeric coercion or UI-only fields.
+`validate_rows()` reports all invalid rows, unknown start row numbers and either
+a valid payload or no payload. `review.session.EditorDraft` retains the opened
+fingerprint, stable widget input, pending rows, dirty status and discard generation.
+These helpers do not import Streamlit or write files.
+
 ## Checks
 
 The core loader requires `jsonschema`. The `dev` extra installs pytest; the
@@ -185,7 +209,8 @@ optional `review` extra installs Streamlit, pandas, PyArrow, Bleach, html5lib an
 tinycss2. Re-run the editable install command after updating to Step 2 to install
 the HTML tooling. Loading a dataset does not import the UI dependencies. The
 former screenshot tests were removed; the new tests cover the dataset contract,
-path/source validation, viewer isolation/sanitization and app navigation/downloads.
+path/source validation, viewer isolation/sanitization, lossless editor conversion,
+row validation, pending edits/discard and app navigation/downloads.
 
 Compile and verify the installed package:
 

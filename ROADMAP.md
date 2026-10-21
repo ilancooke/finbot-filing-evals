@@ -17,9 +17,10 @@ Initially it contains 13 filing packages, 27 HTML documents, and 34 observations
 Counts are an initial reference, not constants: edits can add/delete observations.
 The previous screenshot pipeline has been removed without an archive. Step 1 is
 complete, and Step 2 adds formatted viewing, readable text and original downloads.
-Dataset validation/models, the read-only Streamlit shell, launch script, `review`
-dependency extra and offline tests exist. The core dependency is `jsonschema`.
-Editing, persistence and confirmation remain future steps.
+Step 3 adds a session-only editor, row validation and explicit discard before
+changing filings with pending edits. Dataset validation/models, the Streamlit
+shell, launch script, `review` dependency extra and offline tests exist. The core
+dependency is `jsonschema`. Persistence and confirmation remain future steps.
 
 ## Cleanup baseline
 
@@ -58,7 +59,7 @@ implementation work is Step 1. Do not recreate the deleted screenshot code.
 | --- | --- | --- | --- |
 | 1 | Dataset foundation and read-only app shell | Existing draft dataset | Complete |
 | 2 | Document viewer | Step 1 | Complete |
-| 3 | Editable labels and validation | Step 2 | Pending |
+| 3 | Editable labels and validation | Step 2 | Complete |
 | 4 | Durable saves and synchronized exports | Step 3 | Pending |
 | 5 | Confirmation and guarded navigation | Step 4 | Pending |
 | 6 | Progress and catalog refresh | Step 5 | Pending |
@@ -173,7 +174,7 @@ when Step 2 needs it. The core loader uses `jsonschema`; keep the pytest dev
 extra. Keep persistence/export code independent of Streamlit so it can be tested
 without a running server.
 
-Working commands (run from this repository root; currently read-only):
+Working commands (run from this repository root; session-only edits, no dataset writes):
 
 ```bash
 .venv/bin/python -m pip install -e '.[dev,review]'
@@ -334,15 +335,15 @@ with no disk writes. Keep the viewer and attachment selection behavior intact.
 Prerequisite: Step 2 working viewer. Deliver `review/editor.py`, validation and
 session-state helpers, and focused tests; no disk writes yet.
 
-- [ ] Present one dynamic table: EPS type, value, currency, period, start/end.
+- [x] Present one dynamic table: EPS type, value, currency, period, start/end.
   Convert to/from the two arrays without adding UI fields to saved observations.
-- [ ] Support additions, deletions, empty arrays and an initially empty table.
+- [x] Support additions, deletions, empty arrays and an initially empty table.
   Treat an entirely blank new row as unused; reject partially populated rows.
-- [ ] Preserve decimal strings/negative signs/trailing zeroes and null starts.
+- [x] Preserve decimal strings/negative signs/trailing zeroes and null starts.
   Apply the contract's schema, calendar-date, ordering and duplicate checks.
-- [ ] Show row-specific errors and distinguish unsaved changes from saved values.
+- [x] Show row-specific errors and distinguish unsaved changes from saved values.
   Render current annotation notes and highlight missing dates without filling them.
-- [ ] Keep pending edits through reruns and attachment switches. Until Step 5
+- [x] Keep pending edits through reruns and attachment switches. Until Step 5
   provides the full navigation guard, prevent a filing change from losing edits
   by requiring explicit discard. Clearly label edits as unsaved; no working Save
   or Confirm button is claimed before their implementation steps.
@@ -352,7 +353,54 @@ pairs sharing an end date, and unknown dates; bad dates/duplicates/partial rows
 report useful errors. Adding/deleting the final row preserves the right empty
 array. Disk files remain unchanged, and UI smoke tests retain attachment edits.
 
-Handoff: Pending. Record editor state keys, validation interfaces, and checks.
+Handoff (2026-10-20): complete. Implementation:
+
+- `review/editor.py`: `labels_to_rows()` and `rows_to_labels()` convert one mixed
+  table to/from the two metric arrays, retaining exact decimal/date strings and
+  null starts. `validate_rows()` returns `EditorResult(labels, errors,
+  missing_starts)`: invalid rows have one-based table positions, and any error
+  withholds the payload. It reuses `validate_labels()` for schema, date-order and
+  duplicate checks. Entirely blank rows are unused; partial additions are invalid.
+- `review/session.py`: `EditorDraft` keeps independent saved labels, the opened
+  case fingerprint, stable base rows, pending rows and a widget generation.
+  `dirty` includes invalid rows and ignores unused blank rows. `discard()` restores
+  the opened labels and increments the generation to clear old widget deltas.
+  `capture_widget_changes()` reads the latest public edit/add/delete delta before
+  a navigation callback, including edits arriving with the selector event.
+- `review/app.py`: dynamic table with EPS-type selection and string columns for
+  values/currencies/periods/dates, per-row errors, unknown-start warnings, separate
+  notes/saved status and explicit session-only messaging. The editor always gets
+  stable base input so repeated reruns do not apply additions/deletions twice.
+  The filing selector is disabled while dirty; Discard changes unlocks it. A
+  selector callback also guards delayed events. Save/Confirm are absent.
+- Session namespace is the first 16 hex characters of SHA-256 of the resolved
+  dataset root. Non-widget keys are `<namespace>:active_filing` and
+  `<namespace>:<case_id>:draft`; selector key is `<namespace>:filing`. Editor keys
+  are `<namespace>:<case_id>:editor:<generation>`. Attachment keys from Step 2
+  remain unchanged. Helpers have no Streamlit dependency or filesystem writes.
+- `tests/test_review_editor.py`, `tests/test_review_app.py`, README and roadmap:
+  round-trip precision/sign/currency/quarter/YTD/null tests, row validation,
+  duplicate row mapping, add/delete/initially-empty tables, stable draft/discard,
+  AppTest edit retention across attachment/view/reruns, invalid-row navigation
+  lock, delayed-event guard, restart and dataset-path isolation checks. Temporary
+  bundle file hashes agree before/after editing, discard and navigation.
+
+Checks: predecessor baseline 112 tests passed; final 140 tests passed with network
+connections blocked; Python 3.14.8 repo-local compileall, import/version and
+`pip check` passed. The documented isolated wheel build passed with the new
+editor/session modules and packaged schema. The documented Streamlit command
+started on localhost port 8513 and returned HTTP 200 / `ok` from its health endpoint
+against a disposable synthetic dataset (headless, usage stats disabled).
+The sandbox initially blocked binding localhost; the authorized local smoke run
+succeeded outside the sandbox. Browser automation reported no available browser,
+so visual inspection is not claimed; Streamlit AppTest exercised the real editor
+using its edit/add/delete widget state. No real shared dataset was changed.
+
+Limitations/next action: Step 4, durable saves and synchronized exports. All edits
+remain session-only and are lost on session end. Filing navigation currently
+requires explicit discard (or manually reverting all edits); Save/Discard/Stay,
+confirmation and catalog refresh remain later steps. The table can require
+horizontal scrolling beside wide documents.
 
 ## Step 4 — Durable saves and synchronized exports
 
