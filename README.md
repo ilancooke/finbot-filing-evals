@@ -1,11 +1,10 @@
 # finbot-filing-evals
 
-This package is being repurposed to evaluate earnings extraction from original
-SEC documents collected by `finbot-filings`. The immediate implementation target
-is a local Streamlit UI for inspecting documents, correcting reported/adjusted
-diluted EPS labels, and confirming a golden dataset for later evaluation.
+This package provides a local Streamlit UI for inspecting original SEC documents
+collected by `finbot-filings`, correcting reported/adjusted diluted EPS labels,
+and confirming a golden dataset for later extraction evaluation.
 
-**Current state:** Steps 1–6 are implemented. A local Streamlit app loads and
+**Current state:** Steps 1–7 are complete. A local Streamlit app loads and
 validates the document EPS draft dataset, with filing/attachment selectors,
 isolated formatted HTML viewing, readable text fallback, original-file downloads,
 EPS editing, row validation, review notes, saved status and **Save changes**.
@@ -13,7 +12,9 @@ Saves and confirmation include backups, synchronized exports, integrity refresh
 and restart-safe recovery. **Confirm and next**, previous/next navigation and
 Save/Discard/Stay guards are available. Saved review progress and automatic catalog
 refresh for canonical saves are implemented, with durable pending status and retry.
-Full end-to-end browser verification and final operating docs remain Step 7.
+The complete review workflow has been verified in Firefox on a disposable bundle
+copy, including restart, stale-save refusal and interrupted-save recovery.
+See [the operating checklist](docs/REVIEW_QA.md) for repeatable verification.
 The previous screenshot pipeline has been removed.
 
 ## Start a new implementation session
@@ -310,6 +311,37 @@ never creates a dataset or substitutes another corpus. Opening/editing is read-o
 Save changes, navigation's Save, Confirm and next, and Retry synchronization
 explicitly write to the selected bundle.
 
+Stop the server with **Ctrl-C** in its terminal. Relaunch the same command and
+reload the browser to start a fresh session with saved progress. A browser reload
+also starts a new session: save first if you want to keep pending edits. To run
+another local instance, add `--server.port 8517` before the `--` separator.
+
+### Table controls and review order
+
+Double-click a table cell, enter its replacement, then press **Enter** or **Tab**
+to commit the cell edit. Check the unsaved indicator before saving. Hover over
+the table to reveal **Fullscreen** when dates or other columns are offscreen;
+close fullscreen to return to the filing and save controls. **Add row** inserts
+a blank row; fill all required fields, choosing EPS type from its dropdown.
+To delete, click the row's left gutter and then **Delete row(s)** in the table
+toolbar. Deleting a cell's contents does not delete its observation.
+
+For each filing, inspect every relevant attachment and the review notes, correct
+the table, and resolve any row errors. Use **Save changes** for work in progress.
+Use **Confirm and next** only after reviewing completeness across the entire
+package, including empty metrics and retained unknown starts. Saved progress,
+not an end-of-list message, tells you whether every filing is confirmed.
+
+### Disposable-copy verification
+
+The repeatable browser checklist and read-only output verification are in
+[docs/REVIEW_QA.md](docs/REVIEW_QA.md). This exercises the complete review without
+editing JSON or writing the real labels/catalog. Keep the entire bundle,
+including `.review/`, when making a backup; stop review writers while copying.
+Backups are retained, but there is no automatic undo or backup pruning. Restore
+a known consistent whole bundle when needed, rather than replacing only one
+case or export.
+
 ## Dataset foundation
 
 `review.config.resolve_dataset_root()` resolves configuration without side effects.
@@ -366,8 +398,8 @@ current. Noncanonical configurations never create a receipt or invoke tooling.
 
 The core loader requires `jsonschema`. The `dev` extra installs pytest; the
 optional `review` extra installs Streamlit, pandas, PyArrow, Bleach, html5lib and
-tinycss2. Re-run the editable install command after updating to Step 2 to install
-the HTML tooling. Loading a dataset does not import the UI dependencies. The
+tinycss2. Install both extras for all UI and persistence checks. Loading a dataset
+does not import the UI dependencies. The
 former screenshot tests were removed; the new tests cover the dataset contract,
 path/source validation, viewer isolation/sanitization, lossless editor conversion,
 row validation, pending edits/discard, app navigation/downloads, saves, stale writes,
@@ -376,6 +408,9 @@ Save/Discard/Stay navigation, last-case completion, dataset isolation and inject
 failure/restart recovery. Step 6 adds saved progress/restart/invalidation checks,
 aggregate and per-row export transitions, mocked catalog success/failure/timeout,
 durable receipt/retry and canonical-path/copy safeguards.
+The full-workflow regression also covers edit/add/save/delete, guarded navigation,
+empty-case confirmation, restart, and reopening a completed dataset after edits,
+with exact decimal/currency/null preservation and unchanged source/acquisition files.
 
 Compile and verify the installed package:
 
@@ -388,6 +423,13 @@ Run the test suite for every step:
 
 ```bash
 .venv/bin/python -m pytest
+```
+
+Run the review UI checks separately when investigating browser behavior:
+
+```bash
+.venv/bin/python -m pytest tests/test_review_app.py
+.venv/bin/python -m pip check
 ```
 
 Tests use temporary synthetic fixtures, block network connections and unmocked

@@ -57,6 +57,91 @@ def _edit(app, root, *, edits=None, additions=None, deletions=None):
     return app.run()
 
 
+def test_complete_review_workflow_preserves_sources_and_exports_after_restart(monkeypatch, writable_dataset):
+    """Exercise a whole review, then reopen and revise a completed bundle."""
+    import json
+    import pyarrow.parquet as pq
+    from finbot_filing_evals.review.dataset import load_dataset
+    from finbot_filing_evals.review.persistence import verify_bundle
+
+    root = writable_dataset
+    original = load_dataset(root)
+    immutable = {
+        path: digest for path, digest in _bundle_hashes(root).items()
+        if path.name in {
+            'filing-ready.json', 'provenance.json', 'labels.schema.json',
+            'documents.parquet', 'documents.metadata.json',
+        } or 'documents' in path.parts
+    }
+    app = _open_app(monkeypatch, root)
+    _edit(app, root, edits={0: {'Value': '-4.600'}}, additions=[{
+        'EPS type': 'Adjusted diluted EPS', 'Value': '-0.500', 'Currency': 'USD',
+        'Period': 'Q3 2026', 'Start': None, 'End': '2026-09-30',
+    }])
+    app.selectbox[0].select(app.selectbox[0].options[0]).run()
+    app.radio[0].set_value('Readable text').run()
+    _button(app, 'Save changes').click().run()
+    assert not app.exception and not app.error
+    assert not _draft(app, root)[2].dirty
+    saved = load_dataset(root).cases[0].to_dict()
+    assert saved['labels']['reported_diluted_eps'][0]['value'] == '-4.600'
+    assert saved['labels']['adjusted_diluted_eps'][0]['value'] == '-0.500'
+    assert saved['labels']['adjusted_diluted_eps'][0]['period_start'] is None
+    assert saved['review']['status'] == 'unreviewed'
+
+    # Remove the saved adjusted row, then use guarded Save to move on.
+    _edit(app, root, deletions=[3])
+    _button(app, 'Next').click().run()
+    _button(app, 'Stay').click().run()
+    assert _draft(app, root)[2].dirty
+    _button(app, 'Next').click().run()
+    _button(app, 'Save').click().run()
+    assert 'NEXT' in app.subheader[0].value
+    _button(app, 'Previous').click().run()
+    assert len(_draft(app, root)[2].rows) == 3
+    _button(app, 'Confirm and next').click().run()
+    # A filing with no observations still counts toward complete progress.
+    _edit(app, root, deletions=[0])
+    _button(app, 'Confirm and next').click().run()
+    assert not app.exception and not app.error
+    assert any('End of filing list' in item.value for item in app.success)
+
+    restarted = _open_app(monkeypatch, root)
+    assert not restarted.exception and not restarted.error
+    assert 'DEMO' in restarted.subheader[0].value
+    assert _draft(restarted, root)[2].rows[0]['Value'] == '-4.600'
+    assert any('Overall state: Human Reviewed' in item.value for item in restarted.sidebar.caption)
+    dataset = load_dataset(root)
+    assert dataset.to_dict()['human_reviewed'] is True
+    assert all(case.review_status == 'human_reviewed' for case in dataset.cases)
+    assert dataset.cases[1].to_dict()['labels'] == {
+        'reported_diluted_eps': [], 'adjusted_diluted_eps': [],
+    }
+    verify_bundle(dataset)
+
+    # Revising a confirmed filing must reopen review after a second restart.
+    _edit(restarted, root, edits={0: {'Value': '4.600'}})
+    _button(restarted, 'Save changes').click().run()
+    final_app = _open_app(monkeypatch, root)
+    assert not final_app.exception and not final_app.error
+    assert any('Overall state: In Progress' in item.value for item in final_app.sidebar.caption)
+    final = load_dataset(root)
+    assert final.to_dict()['human_reviewed'] is False
+    assert final.cases[0].to_dict()['review']['reviewed_at_utc'] is None
+    rows = json.loads((root / 'labels.json').read_text())
+    assert pq.read_table(root / 'labels.parquet').to_pylist() == rows
+    assert rows[0]['value'] == '4.600'
+    assert rows[0]['period_start'] is None
+    assert {(row['currency'], row['value']) for row in rows} >= {('USD', '4.600'), ('TWD', '29.43')}
+    assert all(row['review_status'] == 'unreviewed' for row in rows)
+    assert final.cases[0].notes == original.cases[0].notes
+    verify_bundle(final)
+    hashes = _bundle_hashes(root)
+    assert {path: hashes[path] for path in immutable} == immutable
+    assert not (root / '.review/pending.json').exists()
+    assert not (root / '.review/catalog-refresh.json').exists()
+
+
 def test_app_switches_filings_and_attachments_without_writes(monkeypatch, dataset_root):
     before = _bundle_hashes(dataset_root)
     app = _open_app(monkeypatch, dataset_root)

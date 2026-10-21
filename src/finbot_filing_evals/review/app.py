@@ -269,7 +269,7 @@ def _show_dataset(dataset: ReviewDataset, config: ReviewConfig, *, pending: bool
                 st.text(note)
     # Callbacks capture editor deltas before resolving navigation requests.
     st.sidebar.selectbox(
-        "Filing", options=list(cases), index=list(cases).index(case.case_id),
+        "Filing", options=list(cases),
         key=f"{namespace}:filing", disabled=pending,
         on_change=_change_filing, args=(namespace, dataset.root),
         format_func=lambda key: (

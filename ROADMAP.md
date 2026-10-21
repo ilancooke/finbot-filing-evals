@@ -15,7 +15,7 @@ $FINBOT_DATA_ROOT/filing-evals/golden/earnings-eps-v1/
 Initially it contains 13 filing packages, 27 HTML documents, and 34 observations
 (25 reported and 9 adjusted). Forms: eight 8-Ks, two 6-Ks, two 10-Qs, one 10-K.
 Counts are an initial reference, not constants: edits can add/delete observations.
-The previous screenshot pipeline has been removed without an archive. Steps 1–6
+The previous screenshot pipeline has been removed without an archive. Steps 1–7
 are complete, including formatted viewing, readable text and original downloads.
 Steps 1–3 provide dataset validation/models, document viewing and a validated
 session editor. Step 4 adds durable Save changes, synchronized exports, backups,
@@ -23,7 +23,8 @@ stale-session checks and interrupted-save recovery. The Streamlit shell, launch
 script, `review` extra and offline tests exist. The core dependency is `jsonschema`.
 Step 5 adds durable confirmation, UTC timestamps, manifest-order navigation and
 Save/Discard/Stay guards. Step 6 adds saved progress and canonical catalog refresh
-with durable status and retry. Full end-to-end browser QA remains Step 7.
+with durable status and retry. Step 7 verifies the complete disposable-copy browser
+workflow, restart, outputs and clean installation, and supplies operating docs.
 
 ## Cleanup baseline
 
@@ -66,7 +67,7 @@ implementation work is Step 1. Do not recreate the deleted screenshot code.
 | 4 | Durable saves and synchronized exports | Step 3 | Complete |
 | 5 | Confirmation and guarded navigation | Step 4 | Complete |
 | 6 | Progress and catalog refresh | Step 5 | Complete |
-| 7 | End-to-end verification and operating docs | Step 6 | Pending |
+| 7 | End-to-end verification and operating docs | Step 6 | Complete |
 
 Tests belong in every step; Step 7 integrates and exercises the completed flow.
 Until Step 4, the app must not write to the dataset. Confirmation stays disabled
@@ -695,17 +696,17 @@ display limitations remain.
 
 Prerequisite: Steps 1–6 complete, with tests and handoffs already recorded.
 
-- [ ] Exercise a disposable dataset copy in a real browser: view attachments,
+- [x] Exercise a disposable dataset copy in a real browser: view attachments,
   edit/add/delete observations, Save, Confirm, navigate, restart, and check outputs.
   Include empty adjusted EPS, JNJ null starts, TSM two currencies and a long report.
-- [ ] Verify source hashes remain unchanged, decimals survive, review state is
+- [x] Verify source hashes remain unchanged, decimals survive, review state is
   accurate, exports/integrity agree, and stale-write/recovery scenarios still work.
-- [ ] Run compileall, the full package test suite, and the review UI tests with
+- [x] Run compileall, the full package test suite, and the review UI tests with
   the repo-local environment. New tests must not require the shared dataset.
-- [ ] Finalize README setup, launch, dataset override, review meanings, backup/
+- [x] Finalize README setup, launch, dataset override, review meanings, backup/
   recovery and catalog troubleshooting. Document known HTML limitations and the
   working document-review commands without restoring removed legacy workflows.
-- [ ] Record validation evidence and remaining limitations in this roadmap; mark
+- [x] Record validation evidence and remaining limitations in this roadmap; mark
   complete only when the user can perform the entire review without editing JSON.
 
 Acceptance: the documented launch works from a clean repo-local installation;
@@ -713,7 +714,96 @@ the temporary-copy browser workflow and all package checks pass; saved labels,
 review progress, exports and integrity agree after restart. No real review data
 was changed during QA, and the handoff identifies any remaining display limits.
 
-Handoff: Pending. Record full commands/results, browser checks and remaining work.
+Handoff (2026-10-21 UTC): complete. Implementation and operating docs:
+
+- `tests/test_review_app.py`: a complete synthetic-bundle workflow edits a signed
+  decimal, adds/saves/deletes an adjusted observation, retains drafts across
+  attachment/view changes, exercises guarded Stay/Save navigation, confirms an
+  empty filing, completes all filings, restarts, then revises a confirmed filing
+  and restarts again. It checks exact trailing zeroes, currencies, nullable starts,
+  review state/timestamps, JSON/Parquet agreement, source/acquisition invariance,
+  notes, full integrity and absence of catalog receipts/pending synchronization.
+  Existing stale-session and fault-injection tests remain in the full suite.
+- `review/app.py`: removed the redundant filing-selector index because the
+  selected case is already assigned through session state before widget creation.
+  This eliminates Streamlit's duplicate default/session-state log warning while
+  preserving navigation. Full navigation/UI tests pass after the change.
+- README and `docs/REVIEW_QA.md`: final setup/launch/restart commands, cell commit,
+  fullscreen, add/delete row controls, complete-copy/backup instructions, browser
+  checklist, read-only verification, synthetic recovery commands and practical
+  troubleshooting. No JSON edits are needed for ordinary review or UI recovery.
+
+Validation (Python 3.14.8):
+
+```bash
+.venv/bin/python -m compileall -q src tests
+.venv/bin/python -m pytest
+.venv/bin/python -m pytest tests/test_review_app.py
+.venv/bin/python -m pip check
+git diff --check
+.venv/bin/python -m pip wheel --no-deps --wheel-dir /private/tmp/finbot-eps-step7-nj0igkx6/wheels .
+```
+
+Predecessor baseline: 243 passed. Final suite: 244 passed; explicit review UI
+suite: 43 passed. Compileall, dependency checks and whitespace checks passed.
+Normal tests blocked network connections and unmocked catalog subprocesses.
+The isolated wheel built successfully. Sandbox DNS initially blocked fetching
+setuptools; the same build succeeded with network access. A new isolated temporary
+virtualenv, created by the repo's interpreter, installed `-e '.[dev,review]'` from
+scratch; imports/version, `pip check` and all 244 tests passed (Streamlit 1.66.0,
+PyArrow 26.0.0). The existing repo-local environment was retained.
+
+Browser evidence: Firefox on localhost port 8517, with an explicit complete copy
+at `/private/tmp/finbot-eps-step7-nj0igkx6/dataset-copy` and usage statistics off.
+Launch commands used the repo-local interpreter initially and the clean temporary
+interpreter for the final server restart:
+
+```bash
+.venv/bin/python -m streamlit run scripts/review_eps.py --server.address 127.0.0.1 --server.port 8517 --server.headless true --browser.gatherUsageStats false -- --dataset-root /private/tmp/finbot-eps-step7-nj0igkx6/dataset-copy
+/private/tmp/finbot-eps-step7-nj0igkx6/clean-venv/bin/python -m streamlit run scripts/review_eps.py --server.address 127.0.0.1 --server.port 8517 --server.headless true --browser.gatherUsageStats false -- --dataset-root /private/tmp/finbot-eps-step7-nj0igkx6/dataset-copy
+```
+
+Localhost binding required sandbox escalation; both servers started successfully.
+The observed workflow included:
+
+- ASML formatted release, financial-statements attachment and readable text;
+  editing to `-12.930`, adding/saving `-0.500` with a null start, deleting that
+  saved adjusted row, fullscreen controls, guarded Stay and Save, return navigation
+  and confirmation with an empty adjusted array. Exact saved strings were checked.
+- JNJ's four unknown starts, September 27 end and operational-adjustment notes
+  remained visible; confirmation retained all nulls. TSM displayed TWD `29.43`
+  and USD `4.60`, the ADR note and formatted release without conversion.
+- CMC's long annual-report cover, scrolling within the viewer and readable-text
+  fallback were visually inspected. GM's last-case confirmation stayed at GM
+  with an end-of-list message and accurate partial progress (4/13, In Progress).
+- A controlled second-writer save on the copy caused a browser stale-save refusal;
+  pending `5.25` was retained and Discard loaded the latest saved labels. An
+  injected export failure on that copy left durable synchronization pending;
+  browser writes/navigation were disabled, Retry synchronization recovered the
+  recorded `4.60` value and stayed at TSM, then confirmation advanced normally.
+- Stopping/restarting the server with the clean installation and reloading Firefox
+  opened the first filing with saved `-12.930`, confirmation time and 4/13 progress.
+  A complete hash comparison showed restart/viewing made no bundle changes.
+  Saving a subsequent correction reset ASML to unreviewed, cleared its timestamp
+  and reduced saved progress to 3/13. The full suite also verifies all-reviewed
+  and empty-case progress, restart and invalidation independently of real inputs.
+
+The real bundle's complete before/after inventory (105 files) was unchanged.
+All 86 immutable input files in the QA copy, including original documents,
+acquisition/provenance files, document exports and schema, matched their baseline
+hashes. `load_dataset()` plus `verify_bundle()` checked labels/Parquet/metadata,
+counts/review state and all integrity entries. No pending synchronization or
+catalog receipt remained on the copy; no real catalog command was invoked.
+QA servers, browser tab and temporary installation/copy were removed afterward.
+
+Limitations: HTML remains a sanitized display derivative: no external assets,
+inert source links, small source fonts, wide-table scrolling and linearized text
+fallback. Long documents can take several seconds to render. Table fullscreen
+helps expose all six columns. Writer locks require a local POSIX filesystem;
+transactions/backups have no automatic pruning. Real catalog integration remains
+deliberately unexecuted until an explicitly requested real review save; mocked
+tests verify failures/retry and copies disable it. No roadmap implementation work
+remains; the original labels still await the user's actual human review.
 
 ## Boundaries for every step
 
