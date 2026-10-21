@@ -21,6 +21,16 @@ def snapshot(filing: dict) -> None:
 
 
 @pytest.fixture(autouse=True)
+def no_catalog_processes(monkeypatch):
+    # Even a mistakenly canonical UI fixture must never launch the real CLI.
+    from finbot_filing_evals.review import catalog
+
+    def forbidden(*args, **kwargs):
+        raise AssertionError("Tests must mock the catalog subprocess")
+    monkeypatch.setattr(catalog.subprocess, "run", forbidden)
+
+
+@pytest.fixture(autouse=True)
 def no_network(monkeypatch):
     def forbidden(*args, **kwargs):
         raise AssertionError("Tests must not access the network")
@@ -138,3 +148,20 @@ def writable_dataset(dataset_root, monkeypatch):
     pytest.importorskip('pyarrow')
     monkeypatch.setattr(persistence, '_now', lambda: datetime(2026, 10, 20, 12, 30, tzinfo=timezone.utc))
     return prepare_bundle(dataset_root)
+
+
+@pytest.fixture
+def catalog_config(writable_dataset, tmp_path):
+    import shutil
+    from finbot_filing_evals.review.config import DEFAULT_DATASET_SUBPATH, ReviewConfig
+
+    shared = tmp_path / "shared root ; $(untouched)"
+    root = shared / DEFAULT_DATASET_SUBPATH
+    root.parent.mkdir(parents=True)
+    shutil.copytree(writable_dataset, root)
+    repo = tmp_path / "catalog repo"
+    (repo / ".venv/bin").mkdir(parents=True)
+    (repo / ".venv/bin/python").touch()
+    (repo / "scripts").mkdir()
+    (repo / "scripts/build_catalog.py").touch()
+    return ReviewConfig(root, shared, repo)

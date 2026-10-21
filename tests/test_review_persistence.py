@@ -259,6 +259,42 @@ def test_aggregate_and_row_review_states(writable_dataset, reviewed):
         assert json.loads((writable_dataset / 'labels.metadata.json').read_text())['partial']
 
 
+def test_confirm_all_then_edit_reverts_manifest_metadata_and_every_export_row(writable_dataset):
+    import pyarrow.parquet as pq
+
+    root = writable_dataset
+
+    def assert_state(expected):
+        dataset = load_dataset(root)
+        p.verify_bundle(dataset)
+        reviewed = sum(value == 'human_reviewed' for value in expected.values())
+        status = 'human_reviewed' if reviewed == 2 else 'in_progress' if reviewed else 'unreviewed'
+        for record in (dataset.to_dict(), json.loads((root / 'labels.metadata.json').read_text())):
+            assert record['reviewed_case_count'] == reviewed
+            assert record['unreviewed_case_count'] == 2 - reviewed
+            assert record['review_status'] == status
+            assert record['human_reviewed'] == (reviewed == 2)
+            assert record['label_source'] == ('human_reviewed' if reviewed == 2 else 'agent_draft')
+        metadata = json.loads((root / 'labels.metadata.json').read_text())
+        assert metadata['partial'] == (reviewed != 2)
+        rows = json.loads((root / 'labels.json').read_text())
+        assert pq.read_table(root / 'labels.parquet').to_pylist() == rows
+        assert all(row['review_status'] == expected[row['case_id']] for row in rows)
+        return dataset
+
+    expected = {case.case_id: 'unreviewed' for case in load_dataset(root).cases}
+    dataset = assert_state(expected)
+    for case in dataset.cases:
+        current = next(item for item in load_dataset(root).cases if item.case_id == case.case_id)
+        p.confirm_case(root, current.case_id, current.fingerprint, current.to_dict()['labels'], clock=lambda: NOW)
+        expected[case.case_id] = 'human_reviewed'
+        assert_state(expected)
+    case, labels = opened(root)
+    save(root, case, labels)
+    expected[case.case_id] = 'unreviewed'
+    assert_state(expected)
+
+
 @pytest.mark.parametrize('fail_at,committed', [('case', False), ('labels.json', True), ('dataset.json', True), ('integrity.json', True), ('verify', True), ('clear', True), ('clear_sync', True)])
 def test_interrupted_save_recovers_after_restart(writable_dataset, monkeypatch, fail_at, committed):
     root = writable_dataset

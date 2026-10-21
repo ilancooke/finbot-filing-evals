@@ -5,13 +5,15 @@ SEC documents collected by `finbot-filings`. The immediate implementation target
 is a local Streamlit UI for inspecting documents, correcting reported/adjusted
 diluted EPS labels, and confirming a golden dataset for later evaluation.
 
-**Current state:** Steps 1–5 are implemented. A local Streamlit app loads and
+**Current state:** Steps 1–6 are implemented. A local Streamlit app loads and
 validates the document EPS draft dataset, with filing/attachment selectors,
 isolated formatted HTML viewing, readable text fallback, original-file downloads,
 EPS editing, row validation, review notes, saved status and **Save changes**.
 Saves and confirmation include backups, synchronized exports, integrity refresh
 and restart-safe recovery. **Confirm and next**, previous/next navigation and
-Save/Discard/Stay guards are available. Catalog refresh remains Step 6.
+Save/Discard/Stay guards are available. Saved review progress and automatic catalog
+refresh for canonical saves are implemented, with durable pending status and retry.
+Full end-to-end browser verification and final operating docs remain Step 7.
 The previous screenshot pipeline has been removed.
 
 ## Start a new implementation session
@@ -28,7 +30,8 @@ entry point `scripts/review_eps.py`. The former `golden_dataset/` package and
 its tests, prompts, schemas and provider adapters have been removed. Preserve
 unrelated uncommitted changes.
 Use local files; no model calls, AWS access, downloads, sibling-package imports,
-or changes to `finbot-dashboard` are needed for the review UI.
+or changes to `finbot-dashboard` are needed for the review UI. Catalog refresh
+uses the sibling repository's CLI as a subprocess, without importing its code.
 
 ## Document EPS golden dataset
 
@@ -161,8 +164,62 @@ Failed saves or confirmations retain the current filing and draft. Pending
 synchronization blocks further writes and filing navigation. Retry synchronization
 finishes the recorded action, including its original confirmation timestamp, and
 stays on the current filing; navigation requires another explicit action. A
-pending Save/Discard/Stay destination is retained within the session. Catalog
-outputs are not automatically refreshed until Step 6.
+pending Save/Discard/Stay destination is retained within the session. After a
+successful synchronized canonical save or retry, the app attempts catalog refresh.
+
+## Saved progress and catalog refresh
+
+The sidebar shows saved reviewed/unreviewed filing counts, a progress bar, overall
+state and an expandable list of filing statuses in manifest order. These come
+from authoritative saved cases, including filings with no observations. Unsaved
+edits do not change progress. Confirmation increases progress; saving changed
+labels on a confirmed filing makes it unreviewed again. Overall state is
+Unreviewed, In Progress or Human Reviewed for none, some or all filings confirmed.
+Progress survives restart. During interrupted saves it is labeled as saved case
+progress with exports pending synchronization.
+
+After **Save changes**, navigation's **Save**, **Confirm and next**, or successful
+**Retry synchronization**, the app attempts catalog refresh for the canonical
+`$FINBOT_DATA_ROOT/filing-evals/golden/earnings-eps-v1` bundle. No-op saves do not
+launch it. Refresh is enabled only when FINBOT_DATA_ROOT is set and the resolved
+dataset path equals that canonical path. An explicit `--dataset-root` pointing
+there also qualifies; any other copy, including temporary fixtures, disables
+refresh and its retry button. Setting `--catalog-repo` does not enable copies.
+
+By default, the app uses the sibling `finbot-catalog` repository's
+`.venv/bin/python` and `scripts/build_catalog.py --data-root <FINBOT_DATA_ROOT>`.
+It passes an argument list without a shell, uses the catalog repository as its
+working directory, and limits each attempt to 60 seconds. The catalog must have
+its own working environment installed as described in its README. Override its
+location when needed, including when launching from an installed wheel:
+
+```bash
+.venv/bin/python -m streamlit run scripts/review_eps.py --server.address 127.0.0.1 -- --catalog-repo /path/to/finbot-catalog
+```
+
+Opening, editing, discarding and ordinary navigation never launch the catalog.
+Missing/broken tooling, nonzero exits, timeouts and receipt-write failures leave
+saved labels intact and show **Catalog refresh pending**. Successful synchronized
+saves still complete their requested navigation. Use **Retry catalog refresh**
+after fixing the catalog environment; this neither saves edits nor navigates.
+Dataset synchronization must finish first. For CLI diagnostics, run from the
+catalog repository using its own environment:
+
+```bash
+.venv/bin/python scripts/build_catalog.py --data-root /path/to/finbot/data
+```
+
+Catalog state is separate from dataset synchronization. A receipt under
+`.review/catalog-refresh.json` records a successful bundle integrity digest,
+shared-root path and UTC refresh time, or a pending attempt. A moved bundle's
+receipt does not establish freshness for a different shared root. A saved review
+transaction without a
+matching successful receipt remains pending after restart, including a process
+exit between saving and starting refresh. A missing receipt with no review
+transactions means freshness is unknown. The writer lock covers refresh and
+receipt replacement so concurrent review saves cannot be acknowledged by mistake.
+There is no automatic retry on app open. Success means this app refreshed that
+saved bundle revision; it does not certify freshness of unrelated shared data.
 
 ## Durable saves, backups and recovery
 
@@ -189,6 +246,7 @@ Operational files are retained under the dataset's `.review/` directory:
 .review/
 ├── writer.lock
 ├── pending.json                   # present only while synchronization is pending
+├── catalog-refresh.json           # canonical catalog attempt/success receipt
 └── <transaction-id>/
     ├── case.before.json           # exact prior case bytes
     └── 0, 1, ...                  # staged replacement bytes
@@ -211,9 +269,10 @@ in the current session; an uncommitted intended case also remains staged on disk
 Do not remove a pending marker or manually refresh hashes to bypass an error.
 Unexpected source, case, export or staging changes cause recovery to refuse writes;
 restore the affected files from a known consistent copy before retrying. Keep
-`.review/` with a bundle copy if it has a pending save. Catalog outputs are not
-automatically refreshed in Step 4. All write tests use synthetic temporary bundles
-and injectable clocks; browser QA uses disposable copies.
+`.review/` with a bundle copy if it has a pending save. Catalog refresh failures
+have a separate retry and never require rolling back saved labels. All write
+tests use synthetic temporary bundles and injectable clocks; browser QA uses
+disposable copies with catalog refresh disabled.
 
 ## Setup and launch
 
@@ -254,6 +313,8 @@ explicitly write to the selected bundle.
 ## Dataset foundation
 
 `review.config.resolve_dataset_root()` resolves configuration without side effects.
+`parse_config()` returns `ReviewConfig` with the dataset root, optional shared
+data root and catalog repository; `catalog_enabled` compares resolved paths.
 `review.dataset.load_dataset(root)` validates the manifest and cases in listed
 order, the packaged `earnings_eps.v1` label contract, filing snapshots, complete
 artifact membership, original document sizes/hashes and confined relative paths
@@ -296,6 +357,10 @@ recovered as label saves. Recovery checks the intended review transition as well
 as label/export agreement; it never obtains a new confirmation time on retry.
 `review.exports.build_exports()` is UI-independent and stages string-only Parquet
 and matching JSON in memory. These services require the `review` extra's PyArrow.
+`review.catalog.refresh_catalog(config)` verifies synchronized inputs under the
+writer lock, invokes the catalog CLI and records its successful bundle revision.
+`refresh_status(config)` is read-only and returns disabled, unknown, pending or
+current. Noncanonical configurations never create a receipt or invoke tooling.
 
 ## Checks
 
@@ -308,7 +373,9 @@ path/source validation, viewer isolation/sanitization, lossless editor conversio
 row validation, pending edits/discard, app navigation/downloads, saves, stale writes,
 process locking, export agreement, confirmation timestamps/invalidation,
 Save/Discard/Stay navigation, last-case completion, dataset isolation and injected
-failure/restart recovery.
+failure/restart recovery. Step 6 adds saved progress/restart/invalidation checks,
+aggregate and per-row export transitions, mocked catalog success/failure/timeout,
+durable receipt/retry and canonical-path/copy safeguards.
 
 Compile and verify the installed package:
 
@@ -323,8 +390,9 @@ Run the test suite for every step:
 .venv/bin/python -m pytest
 ```
 
-Tests use temporary synthetic fixtures, block network connections, and avoid
-shared-data writes. Streamlit AppTest checks run when the `review` extra is
+Tests use temporary synthetic fixtures, block network connections and unmocked
+catalog subprocess calls, and avoid shared-data writes. Streamlit AppTest checks
+run when the `review` extra is
 installed; install both extras to run the complete suite. Real-sample smoke checks
 are separate so a missing shared bundle does not break normal tests.
 

@@ -3,10 +3,12 @@
 from collections.abc import Sequence
 from hashlib import sha256
 
-from .config import parse_dataset_root
+from .catalog import refresh_catalog, refresh_status
+from .config import ReviewConfig, parse_config
 from .dataset import ReviewDataset, load_dataset
 from .editor import COLUMNS, METRIC_NAMES, validate_rows
 from .errors import ReviewError
+from .exports import review_state
 from .persistence import confirm_case, save_changes, retry_synchronization, synchronization_pending
 from .session import EditorDraft, NavigationGuard, adjacent_case
 from .viewer import initial_attachment, plain_text_preview, viewer_frame
@@ -68,7 +70,40 @@ def _discard(namespace: str, root, case_id: str, target: str | None = None) -> N
         st.session_state[f"{namespace}:save_error"] = str(error)
 
 
-def _persist(dataset, case, draft, labels, namespace, *, confirm=False, target=None) -> None:
+def _refresh_catalog(config: ReviewConfig, namespace: str) -> None:
+    import streamlit as st
+
+    try:
+        refresh_catalog(config)
+        st.session_state.pop(f"{namespace}:catalog_error", None)
+    except ReviewError as error:
+        # Label persistence already succeeded. Catalog errors cannot roll it back
+        # or stop the requested navigation after a synchronized save.
+        st.session_state[f"{namespace}:catalog_error"] = str(error)
+
+
+def _show_catalog(config: ReviewConfig, namespace: str, *, pending: bool) -> None:
+    import streamlit as st
+
+    status = refresh_status(config)
+    if status == "disabled":
+        st.sidebar.caption("Catalog refresh disabled: this is not the canonical FINBOT_DATA_ROOT dataset.")
+        return
+    error = st.session_state.get(f"{namespace}:catalog_error")
+    if error or status == "pending":
+        st.sidebar.warning("Catalog refresh pending. Saved labels are retained; catalog freshness is not confirmed.")
+        if error:
+            st.sidebar.error(error)
+    elif status == "current":
+        st.sidebar.caption("Catalog refreshed successfully for this saved bundle revision.")
+    else:
+        st.sidebar.caption("Catalog freshness unknown. No successful refresh has been recorded for this bundle.")
+    if st.sidebar.button("Retry catalog refresh", disabled=pending):
+        _refresh_catalog(config, namespace)
+        st.rerun()
+
+
+def _persist(dataset, case, draft, labels, namespace, config, *, confirm=False, target=None) -> None:
     import streamlit as st
 
     try:
@@ -86,6 +121,8 @@ def _persist(dataset, case, draft, labels, namespace, *, confirm=False, target=N
         _navigation(namespace).stay()
         if target is not None:
             st.session_state[f"{namespace}:active_filing"] = target
+        if saved.changed:
+            _refresh_catalog(config, namespace)
         st.rerun()
     except ReviewError as error:
         st.error(str(error))
@@ -94,7 +131,7 @@ def _persist(dataset, case, draft, labels, namespace, *, confirm=False, target=N
             st.rerun()
 
 
-def _show_dataset(dataset: ReviewDataset, *, pending: bool = False) -> None:
+def _show_dataset(dataset: ReviewDataset, config: ReviewConfig, *, pending: bool = False) -> None:
     # UI dependencies stay optional: loading/validating a dataset does not need them.
     import pandas as pd
     import streamlit as st
@@ -104,6 +141,19 @@ def _show_dataset(dataset: ReviewDataset, *, pending: bool = False) -> None:
         f"{dataset.observation_count} EPS observations"
     )
     namespace = sha256(str(dataset.root).encode()).hexdigest()[:16]
+    state = review_state([case.to_dict() for case in dataset.cases])
+    reviewed = state['reviewed_case_count']
+    st.sidebar.caption("Saved review progress" + (" — exports pending synchronization" if pending else ""))
+    st.sidebar.progress(reviewed / len(dataset.cases), text=f"{reviewed} of {len(dataset.cases)} filings confirmed")
+    st.sidebar.caption(
+        f"Reviewed: {reviewed} · Unreviewed: {state['unreviewed_case_count']} · "
+        f"Overall state: {state['review_status'].replace('_', ' ').title()}"
+    )
+    with st.sidebar.expander("Saved filing statuses"):
+        st.table([{
+            "Ticker": item.ticker, "Form": item.form_type, "Filing": item.filing_id,
+            "Status": item.review_status.replace('_', ' ').title(),
+        } for item in dataset.cases])
     cases = {case.case_id: case for case in dataset.cases}
     active_key = f"{namespace}:active_filing"
     if st.session_state.get(active_key) not in cases:
@@ -238,7 +288,7 @@ def _show_dataset(dataset: ReviewDataset, *, pending: bool = False) -> None:
         key=f"{namespace}:{case.case_id}:save",
         help="Save valid corrections without confirming the filing.",
     ):
-        _persist(dataset, case, draft, result.labels, namespace)
+        _persist(dataset, case, draft, result.labels, namespace, config)
     previous = adjacent_case(list(cases), case.case_id, -1)
     following = adjacent_case(list(cases), case.case_id, 1)
     st.sidebar.caption(
@@ -249,7 +299,7 @@ def _show_dataset(dataset: ReviewDataset, *, pending: bool = False) -> None:
         "Confirm and next", disabled=pending or bool(result.errors) or navigation.target is not None,
         key=f"{namespace}:{case.case_id}:confirm",
     ):
-        _persist(dataset, case, draft, result.labels, namespace, confirm=True, target=following)
+        _persist(dataset, case, draft, result.labels, namespace, config, confirm=True, target=following)
     for label, target in (("Previous", previous), ("Next", following)):
         st.sidebar.button(
             label, disabled=pending or target is None,
@@ -260,12 +310,13 @@ def _show_dataset(dataset: ReviewDataset, *, pending: bool = False) -> None:
         target = navigation.target
         st.sidebar.warning(f"Leave {case.ticker} for {cases[target].ticker}? Save, Discard or Stay.")
         if st.sidebar.button("Save", disabled=pending or bool(result.errors), key=f"{namespace}:leave_save"):
-            _persist(dataset, case, draft, result.labels, namespace, target=target)
+            _persist(dataset, case, draft, result.labels, namespace, config, target=target)
         st.sidebar.button(
             "Discard", disabled=pending, on_click=_discard,
             args=(namespace, dataset.root, case.case_id, target), key=f"{namespace}:leave_discard",
         )
         st.sidebar.button("Stay", on_click=navigation.stay, key=f"{namespace}:leave_stay")
+    _show_catalog(config, namespace, pending=pending)
 
 
 def main(argv: Sequence[str] | None = None) -> None:
@@ -278,7 +329,8 @@ def main(argv: Sequence[str] | None = None) -> None:
         "Confirm and next saves and confirms the whole filing. Unsaved edits are lost when the session ends."
     )
     try:
-        root = parse_dataset_root(argv)
+        config = parse_config(argv)
+        root = config.dataset_root
         namespace = sha256(str(root.resolve()).encode()).hexdigest()[:16]
         pending = synchronization_pending(root)
         st.session_state[f"{namespace}:pending"] = pending
@@ -295,12 +347,13 @@ def main(argv: Sequence[str] | None = None) -> None:
                     if draft is not None and validate_rows(draft.rows).labels == current.to_dict()["labels"]:
                         draft.accept_saved(current.to_dict()["labels"], current.fingerprint)
                     st.session_state[f"{namespace}:save_notice"] = "Labels saved and exports synchronized."
+                    _refresh_catalog(config, namespace)
                     st.rerun()
                 except ReviewError as error:
                     st.error(str(error))
         notice = st.session_state.pop(f"{namespace}:save_notice", None)
         if notice:
             st.success(notice)
-        _show_dataset(load_dataset(root, validate_counts=not pending), pending=pending)
+        _show_dataset(load_dataset(root, validate_counts=not pending), config, pending=pending)
     except ReviewError as error:
         st.error(str(error))

@@ -22,11 +22,14 @@ def test_preview_extracts_table_text_without_scripts_or_styles():
     assert "<" not in preview
 
 
-def _open_app(monkeypatch, root):
+def _open_app(monkeypatch, root, catalog_repo=None):
     testing = pytest.importorskip("streamlit.testing.v1")
     for dependency in ("html5lib", "bleach", "tinycss2"):
         pytest.importorskip(dependency)
-    monkeypatch.setattr(sys, "argv", ["review_eps.py", "--dataset-root", str(root)])
+    argv = ["review_eps.py", "--dataset-root", str(root)]
+    if catalog_repo is not None:
+        argv += ["--catalog-repo", str(catalog_repo)]
+    monkeypatch.setattr(sys, "argv", argv)
     script = Path(__file__).resolve().parents[1] / "scripts/review_eps.py"
     return testing.AppTest.from_file(script, default_timeout=30).run()
 
@@ -666,3 +669,146 @@ def test_confirmation_follows_manifest_order(monkeypatch, writable_dataset):
     _button(app, 'Confirm and next').click().run()
     assert 'DEMO' in app.subheader[0].value
     assert any('End of filing list' in item.value for item in app.success)
+
+
+def _assert_progress(app, reviewed, state):
+    assert not app.exception
+    assert f"Reviewed: {reviewed} · Unreviewed: {2 - reviewed} · Overall state: {state}" in [
+        item.value for item in app.sidebar.caption
+    ]
+    assert app.get('progress')[0].proto.value == reviewed * 50
+    assert app.sidebar.table[0].value['Status'].tolist() == (
+        ['Unreviewed', 'Unreviewed'] if reviewed == 0 else
+        ['Human Reviewed', 'Unreviewed'] if reviewed == 1 else
+        ['Human Reviewed', 'Human Reviewed']
+    )
+
+
+def test_saved_progress_survives_restart_and_complete_dataset_reverts(monkeypatch, writable_dataset):
+    root = writable_dataset
+    app = _open_app(monkeypatch, root)
+    _assert_progress(app, 0, 'Unreviewed')
+    _button(app, 'Confirm and next').click().run()
+    _assert_progress(app, 1, 'In Progress')
+    _button(app, 'Confirm and next').click().run()
+    _assert_progress(app, 2, 'Human Reviewed')
+    app = _open_app(monkeypatch, root)
+    _assert_progress(app, 2, 'Human Reviewed')
+    _edit(app, root, edits={0: {'Value': '-4.60'}})
+    _assert_progress(app, 2, 'Human Reviewed')  # edits are not saved progress
+    _button(app, 'Save changes').click().run()
+    assert not app.exception
+    assert 'Reviewed: 1 · Unreviewed: 1 · Overall state: In Progress' in [item.value for item in app.sidebar.caption]
+    assert app.sidebar.table[0].value['Status'].tolist() == ['Unreviewed', 'Human Reviewed']
+    restarted = _open_app(monkeypatch, root)
+    assert 'Reviewed: 1 · Unreviewed: 1 · Overall state: In Progress' in [item.value for item in restarted.sidebar.caption]
+
+
+@pytest.mark.parametrize('action', ['Save changes', 'Confirm and next', 'Save'])
+def test_canonical_saves_refresh_catalog_after_synchronization(monkeypatch, catalog_config, action):
+    from finbot_filing_evals.review import catalog
+    from finbot_filing_evals.review.dataset import load_dataset
+    from finbot_filing_evals.review.persistence import verify_bundle, synchronization_pending
+
+    config = catalog_config
+    root = config.dataset_root
+    monkeypatch.setenv('FINBOT_DATA_ROOT', str(config.data_root))
+    calls = []
+
+    def run(*args, **kwargs):
+        assert not synchronization_pending(root)
+        verify_bundle(load_dataset(root))
+        calls.append(args[0])
+
+    monkeypatch.setattr(catalog.subprocess, 'run', run)
+    app = _open_app(monkeypatch, root, config.catalog_repo)
+    assert not calls  # opening never launches the CLI
+    assert any('freshness unknown' in item.value for item in app.sidebar.caption)
+    _edit(app, root, edits={0: {'Value': '-4.60'}})
+    assert not calls
+    if action == 'Save':
+        _button(app, 'Next').click().run()
+    _button(app, action).click().run()
+    assert not app.exception
+    assert not app.error
+    assert len(calls) == 1
+    assert catalog.refresh_status(config) == 'current'
+    assert any('Catalog refreshed successfully' in item.value for item in app.sidebar.caption)
+    assert load_dataset(root).cases[0].to_dict()['labels']['reported_diluted_eps'][0]['value'] == '-4.60'
+    assert ('NEXT' if action != 'Save changes' else 'DEMO') in app.subheader[0].value
+    restarted = _open_app(monkeypatch, root, config.catalog_repo)
+    assert any('Catalog refreshed successfully' in item.value for item in restarted.sidebar.caption)
+    assert len(calls) == 1
+
+
+def test_failed_catalog_does_not_undo_confirmation_or_navigation_and_retries_after_restart(monkeypatch, catalog_config):
+    import subprocess
+    from finbot_filing_evals.review import catalog
+    from finbot_filing_evals.review.dataset import load_dataset
+
+    config = catalog_config
+    monkeypatch.setenv('FINBOT_DATA_ROOT', str(config.data_root))
+
+    def fail(*args, **kwargs):
+        raise subprocess.CalledProcessError(3, args[0])
+
+    monkeypatch.setattr(catalog.subprocess, 'run', fail)
+    app = _open_app(monkeypatch, config.dataset_root, config.catalog_repo)
+    _button(app, 'Confirm and next').click().run()
+    assert not app.exception
+    assert 'NEXT' in app.subheader[0].value
+    assert not _draft(app, config.dataset_root)[2].dirty
+    assert load_dataset(config.dataset_root).cases[0].review_status == 'human_reviewed'
+    assert any('Catalog refresh pending' in item.value for item in app.sidebar.warning)
+    assert any('status 3' in item.value for item in app.sidebar.error)
+    app = _open_app(monkeypatch, config.dataset_root, config.catalog_repo)
+    assert any('Catalog refresh pending' in item.value for item in app.sidebar.warning)
+    monkeypatch.setattr(catalog.subprocess, 'run', lambda *args, **kwargs: None)
+    _button(app, 'Retry catalog refresh').click().run()
+    assert not app.exception
+    assert not app.error
+    assert any('Catalog refreshed successfully' in item.value for item in app.sidebar.caption)
+    assert 'DEMO' in app.subheader[0].value  # retry does not navigate
+
+
+def test_interrupted_canonical_save_refreshes_only_after_recovery(monkeypatch, catalog_config):
+    from finbot_filing_evals.review import catalog, persistence as p
+
+    config = catalog_config
+    monkeypatch.setenv('FINBOT_DATA_ROOT', str(config.data_root))
+    calls = []
+    monkeypatch.setattr(catalog.subprocess, 'run', lambda *args, **kwargs: calls.append(args))
+    app = _open_app(monkeypatch, config.dataset_root, config.catalog_repo)
+    atomic = p._atomic
+
+    def fail(root, name, raw):
+        if name == 'labels.json':
+            raise OSError('interrupted save')
+        return atomic(root, name, raw)
+
+    with monkeypatch.context() as m:
+        m.setattr(p, '_atomic', fail)
+        _button(app, 'Confirm and next').click().run()
+    assert not app.exception
+    assert not calls
+    assert _button(app, 'Retry catalog refresh').disabled
+    assert any('exports pending synchronization' in item.value for item in app.sidebar.caption)
+    _button(app, 'Retry synchronization').click().run()
+    assert not app.exception
+    assert len(calls) == 1
+    assert catalog.refresh_status(config) == 'current'
+    assert 'DEMO' in app.subheader[0].value
+
+
+def test_dataset_copy_saves_and_confirmation_never_refresh_shared_catalog(monkeypatch, writable_dataset, tmp_path):
+    monkeypatch.setenv('FINBOT_DATA_ROOT', str(tmp_path / 'other shared root'))
+    app = _open_app(monkeypatch, writable_dataset)
+    assert any('Catalog refresh disabled' in item.value for item in app.sidebar.caption)
+    assert not any(button.label == 'Retry catalog refresh' for button in app.button)
+    _edit(app, writable_dataset, edits={0: {'Value': '-4.60'}})
+    _button(app, 'Save changes').click().run()
+    _button(app, 'Confirm and next').click().run()
+    assert not app.exception
+    assert not app.error
+    assert not (writable_dataset / '.review/catalog-refresh.json').exists()
+    assert not (tmp_path / 'other shared root').exists()

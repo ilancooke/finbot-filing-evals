@@ -15,14 +15,15 @@ $FINBOT_DATA_ROOT/filing-evals/golden/earnings-eps-v1/
 Initially it contains 13 filing packages, 27 HTML documents, and 34 observations
 (25 reported and 9 adjusted). Forms: eight 8-Ks, two 6-Ks, two 10-Qs, one 10-K.
 Counts are an initial reference, not constants: edits can add/delete observations.
-The previous screenshot pipeline has been removed without an archive. Steps 1–5
+The previous screenshot pipeline has been removed without an archive. Steps 1–6
 are complete, including formatted viewing, readable text and original downloads.
 Steps 1–3 provide dataset validation/models, document viewing and a validated
 session editor. Step 4 adds durable Save changes, synchronized exports, backups,
 stale-session checks and interrupted-save recovery. The Streamlit shell, launch
 script, `review` extra and offline tests exist. The core dependency is `jsonschema`.
 Step 5 adds durable confirmation, UTC timestamps, manifest-order navigation and
-Save/Discard/Stay guards. Progress and catalog refresh remain Step 6.
+Save/Discard/Stay guards. Step 6 adds saved progress and canonical catalog refresh
+with durable status and retry. Full end-to-end browser QA remains Step 7.
 
 ## Cleanup baseline
 
@@ -64,7 +65,7 @@ implementation work is Step 1. Do not recreate the deleted screenshot code.
 | 3 | Editable labels and validation | Step 2 | Complete |
 | 4 | Durable saves and synchronized exports | Step 3 | Complete |
 | 5 | Confirmation and guarded navigation | Step 4 | Complete |
-| 6 | Progress and catalog refresh | Step 5 | Pending |
+| 6 | Progress and catalog refresh | Step 5 | Complete |
 | 7 | End-to-end verification and operating docs | Step 6 | Pending |
 
 Tests belong in every step; Step 7 integrates and exercises the completed flow.
@@ -601,16 +602,16 @@ Prerequisite: Step 5 complete persisted review flow. Deliver progress UI and a
 small catalog-command adapter; dataset aggregate/export semantics already exist
 from Step 4 and must not be deferred until here.
 
-- [ ] Show saved reviewed/unreviewed counts, filing statuses and overall state;
+- [x] Show saved reviewed/unreviewed counts, filing statuses and overall state;
   derive them from cases rather than initial constants or unsaved session flags.
-- [ ] Verify aggregate flags and per-row export states for no/some/all reviewed
+- [x] Verify aggregate flags and per-row export states for no/some/all reviewed
   cases, including reverting a previously complete dataset after a label edit.
-- [ ] After successful synchronized saves to the canonical shared dataset, invoke
+- [x] After successful synchronized saves to the canonical shared dataset, invoke
   the sibling finbot-catalog CLI as a subprocess argument list, not a shell string
   or sibling Python import. Default to its repo-local interpreter and
   `scripts/build_catalog.py --data-root <FINBOT_DATA_ROOT>`; allow a documented
   `--catalog-repo` override. No catalog source changes are required.
-- [ ] Disable automatic catalog refresh for explicit noncanonical dataset copies,
+- [x] Disable automatic catalog refresh for explicit noncanonical dataset copies,
   including temporary fixtures. Missing/broken catalog tooling or a failed refresh
   must not undo saved labels or hide the failure; show catalog refresh pending and
   let the user retry. Do not claim catalog freshness before success.
@@ -620,7 +621,75 @@ accurate; catalog adapter has mocked success/failure tests and never runs in nor
 UI/unit tests. Temporary-copy use performs no shared catalog writes. Confirm the
 real catalog integration only after an explicitly requested real review save.
 
-Handoff: Pending. Record CLI configuration, retry behavior and progress checks.
+Handoff (2026-10-21 UTC): complete. Implementation:
+
+- `review/app.py`: sidebar progress bar, saved reviewed/unreviewed counts and
+  overall state, plus an expandable manifest-order filing-status table. Uses
+  `exports.review_state()` on authoritative cases, never draft/editor flags or
+  initial counts. Pending synchronization labels progress as saved case state
+  with exports still pending. Existing filing selectors retain their statuses.
+- `review/config.py`: `parse_config()` returns `ReviewConfig(dataset_root,
+  data_root, catalog_repo)`. `--catalog-repo` defaults to the sibling repository;
+  `parse_dataset_root()` remains compatible. Catalog enablement requires
+  FINBOT_DATA_ROOT and exact resolved canonical-path equality, including an
+  explicit canonical override. Copies and standalone overrides are disabled;
+  changing the catalog repository cannot enable a noncanonical dataset.
+- `review/catalog.py`: UI-independent `refresh_catalog(config)` invokes
+  `<catalog-repo>/.venv/bin/python <catalog-repo>/scripts/build_catalog.py
+  --data-root <FINBOT_DATA_ROOT>` as an argument list, with the catalog repo as
+  cwd, checked exit status, captured output and a 60-second timeout. It verifies
+  synchronized bundle inputs and holds the existing writer lock through the
+  subprocess and receipt replacement. No sibling imports or catalog source
+  changes. Missing tools, execution failures, timeouts and receipt errors become
+  actionable review errors without changing labels or pretending refresh worked.
+- `.review/catalog-refresh.json` is an atomic operational receipt outside bundle
+  integrity: pending before a CLI attempt, successful only after a zero exit and
+  durable receipt replacement. Success records the integrity SHA-256, shared-root
+  path and UTC time. Read-only `refresh_status()` reports disabled/unknown/pending/
+  current. A saved transaction without a matching receipt remains pending after
+  restart, including interruption between saving and invoking the adapter. Moved
+  bundles do not transfer freshness to a different shared root. A missing receipt
+  with no review transactions reports unknown; malformed receipts report pending.
+- The app refreshes after changed synchronized Save changes, navigation Save,
+  Confirm and next, and successful Retry synchronization. Catalog failure retains
+  successful save/confirmation/navigation, displays a separate pending warning,
+  and offers Retry catalog refresh without saving drafts or navigating. Recovery
+  must finish first. Opening, editing, discarding, ordinary navigation and no-op
+  saves never launch the CLI. Opening pending catalog state does not auto-retry.
+- `tests/test_review_catalog.py`, config/app/persistence tests and fixtures:
+  mocked subprocess success, missing tooling, permission/nonzero/timeout failures,
+  durable pending/retry, corrupt receipts, receipt-write failure, moved-root
+  invalidation, source/export invariance, canonical path aliases and copies.
+  AppTest covers progress through confirmation/restart/unsaved edits/invalidation,
+  each save route, preserved navigation after catalog failure, restart/retry and
+  recovery-before-refresh. A complete none/some/all-reviewed/invalidated sequence
+  verifies manifest and metadata flags/counts plus every JSON/Parquet row state.
+  An autouse guard blocks any unmocked catalog subprocess in normal tests.
+- README and `.env.example`: current capabilities, catalog configuration/CLI,
+  canonical-copy rules, progress meanings, separate retries, receipt semantics,
+  timeout and troubleshooting. No new dependencies or sibling-package changes.
+
+Checks: predecessor baseline 217 tests passed; final 243 tests passed with network
+and unmocked catalog subprocesses blocked. Repo-local Python 3.14.8 compileall,
+import/version, `pip check` and `git diff --check` passed. The documented isolated
+wheel build passed; catalog/config/app imports and the packaged schema were
+verified from the extracted wheel outside the source tree. Streamlit started on
+localhost port 8516 with an explicit disposable synthetic bundle (headless, usage
+stats disabled); the page returned HTTP 200 and health endpoint HTTP 200 / `ok`.
+The synthetic bundle inventory was unchanged and no `.review/` was created; the
+server and temporary bundle were removed. Sandbox DNS initially blocked the wheel
+build, and sandbox localhost permissions blocked startup/health access; those
+same checks passed outside the sandbox. UI checks used Streamlit AppTest; no
+visual browser inspection is claimed. No real shared dataset or catalog outputs
+were changed, and no real catalog command was invoked.
+
+Limitations/next action: Step 7, full disposable-copy browser workflow and final
+operating docs. Real catalog integration remains deliberately unexecuted until
+an explicitly requested real review save. A receipt attests only to a successful
+refresh of this saved bundle revision, not freshness of unrelated shared data or
+external catalog changes. Catalog refresh may block a local review write for up
+to 60 seconds while the CLI runs. Existing POSIX lock, retained backup and HTML
+display limitations remain.
 
 ## Step 7 — End-to-end verification and operating docs
 
