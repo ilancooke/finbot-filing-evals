@@ -267,3 +267,89 @@ def test_delayed_filing_event_cannot_bypass_dirty_guard(monkeypatch, labels):
     state["test:filing"] = "second"
     _change_filing("test")
     assert state["test:active_filing"] == "second"
+
+
+def _button(app, label):
+    return next(button for button in app.button if button.label == label)
+
+
+def test_save_restarts_with_durable_labels_and_unlocked_navigation(monkeypatch, writable_dataset):
+    import json
+    from finbot_filing_evals.review.dataset import load_dataset
+    from finbot_filing_evals.review.persistence import verify_bundle
+
+    root = writable_dataset
+    app = _open_app(monkeypatch, root)
+    assert _button(app, 'Save changes').disabled
+    _edit(app, root, edits={0: {'Value': '-4.60'}})
+    assert not _button(app, 'Save changes').disabled
+    _button(app, 'Save changes').click().run()
+    assert not app.exception
+    assert not app.error
+    assert app.success
+    assert not _draft(app, root)[2].dirty
+    assert not app.sidebar.selectbox[0].disabled
+    assert _draft(app, root)[2].rows[0]['Value'] == '-4.60'
+    restarted = _open_app(monkeypatch, root)
+    assert _draft(restarted, root)[2].rows[0]['Value'] == '-4.60'
+    assert not _draft(restarted, root)[2].dirty
+    dataset = load_dataset(root)
+    assert dataset.cases[0].review_status == 'unreviewed'
+    assert json.loads((root / 'labels.json').read_text())[0]['value'] == '-4.60'
+    verify_bundle(dataset)
+
+
+def test_save_rejects_invalid_rows_and_preserves_conflicting_draft(monkeypatch, writable_dataset):
+    from finbot_filing_evals.review.persistence import save_changes
+    from finbot_filing_evals.review.dataset import load_dataset
+
+    root = writable_dataset
+    app = _open_app(monkeypatch, root)
+    _edit(app, root, additions=[{'Value': 'bad'}])
+    assert _button(app, 'Save changes').disabled
+    _button(app, 'Discard changes').click().run()
+    _edit(app, root, edits={0: {'Value': '8.00'}})
+    case = load_dataset(root).cases[0]
+    labels = case.to_dict()['labels']
+    labels['reported_diluted_eps'][0]['value'] = '7.00'
+    save_changes(root, case.case_id, case.fingerprint, labels)
+    _button(app, 'Save changes').click().run()
+    assert not app.exception
+    assert any('Pending edits retained' in error.value for error in app.error)
+    assert _draft(app, root)[2].rows[0]['Value'] == '8.00'
+    _button(app, 'Discard changes').click().run()
+    assert _draft(app, root)[2].rows[0]['Value'] == '7.00'
+    assert not _draft(app, root)[2].dirty
+
+
+def test_pending_save_is_visible_after_restart_and_retry(monkeypatch, writable_dataset):
+    from finbot_filing_evals.review import persistence as p
+
+    root = writable_dataset
+    app = _open_app(monkeypatch, root)
+    _edit(app, root, deletions=[0, 1, 2])
+    atomic = p._atomic
+    def fail(root, name, raw):
+        if name == 'labels.json': raise OSError('injected export failure')
+        return atomic(root, name, raw)
+    with monkeypatch.context() as m:
+        m.setattr(p, '_atomic', fail)
+        _button(app, 'Save changes').click().run()
+    assert not app.exception
+    assert any('Labels saved, exports need retry' in error.value for error in app.error)
+    assert any('Synchronization pending' in item.value for item in app.warning)
+    assert app.sidebar.selectbox[0].disabled
+    assert _button(app, 'Save changes').disabled
+    assert _draft(app, root)[2].dirty
+    restarted = _open_app(monkeypatch, root)
+    assert not restarted.exception
+    assert restarted.sidebar.selectbox[0].disabled
+    assert any('Synchronization pending' in item.value for item in restarted.warning)
+    _button(app, 'Retry synchronization').click().run()
+    assert not app.exception
+    assert not app.error
+    assert app.success
+    assert not p.synchronization_pending(root)
+    assert not _draft(app, root)[2].dirty
+    assert not app.sidebar.selectbox[0].disabled
+    assert _draft(app, root)[2].rows == []

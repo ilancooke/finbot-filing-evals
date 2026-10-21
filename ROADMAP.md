@@ -17,10 +17,11 @@ Initially it contains 13 filing packages, 27 HTML documents, and 34 observations
 Counts are an initial reference, not constants: edits can add/delete observations.
 The previous screenshot pipeline has been removed without an archive. Step 1 is
 complete, and Step 2 adds formatted viewing, readable text and original downloads.
-Step 3 adds a session-only editor, row validation and explicit discard before
-changing filings with pending edits. Dataset validation/models, the Streamlit
-shell, launch script, `review` dependency extra and offline tests exist. The core
-dependency is `jsonschema`. Persistence and confirmation remain future steps.
+Steps 1–3 provide dataset validation/models, document viewing and a validated
+session editor. Step 4 adds durable Save changes, synchronized exports, backups,
+stale-session checks and interrupted-save recovery. The Streamlit shell, launch
+script, `review` extra and offline tests exist. The core dependency is `jsonschema`.
+Confirmation and catalog refresh remain future steps.
 
 ## Cleanup baseline
 
@@ -60,7 +61,7 @@ implementation work is Step 1. Do not recreate the deleted screenshot code.
 | 1 | Dataset foundation and read-only app shell | Existing draft dataset | Complete |
 | 2 | Document viewer | Step 1 | Complete |
 | 3 | Editable labels and validation | Step 2 | Complete |
-| 4 | Durable saves and synchronized exports | Step 3 | Pending |
+| 4 | Durable saves and synchronized exports | Step 3 | Complete |
 | 5 | Confirmation and guarded navigation | Step 4 | Pending |
 | 6 | Progress and catalog refresh | Step 5 | Pending |
 | 7 | End-to-end verification and operating docs | Step 6 | Pending |
@@ -174,7 +175,7 @@ when Step 2 needs it. The core loader uses `jsonschema`; keep the pytest dev
 extra. Keep persistence/export code independent of Streamlit so it can be tested
 without a running server.
 
-Working commands (run from this repository root; session-only edits, no dataset writes):
+Working commands (run from this repository root; Save/Retry write the selected bundle):
 
 ```bash
 .venv/bin/python -m pip install -e '.[dev,review]'
@@ -407,28 +408,28 @@ horizontal scrolling beside wide documents.
 Prerequisite: Step 3 validated editor output. Deliver `review/persistence.py` and
 `exports.py`, wire Save changes, and test failure/recovery paths.
 
-- [ ] Serialize writes with a dataset-level local writer lock; inside the lock
+- [x] Serialize writes with a dataset-level local writer lock; inside the lock
   compare the case's current fingerprint with the opened version. A conflict
   preserves pending edits and refuses to overwrite the external change.
-- [ ] Revalidate source integrity and proposed labels, back up the prior case,
+- [x] Revalidate source integrity and proposed labels, back up the prior case,
   and atomically replace case.json. Preserve filing/documents/provenance fields.
   Implement the agreed invalidation/no-op semantics for previously reviewed cases.
-- [ ] From authoritative case files, rebuild labels.json/Parquet, label metadata,
+- [x] From authoritative case files, rebuild labels.json/Parquet, label metadata,
   observation/review counts and state in dataset.json, and REVIEW.md. Maintain
   original creation time and acquisition facts; update modification metadata.
-- [ ] Refresh integrity.json last. Verify source manifests/hashes, but do not
+- [x] Refresh integrity.json last. Verify source manifests/hashes, but do not
   rewrite source documents, provenance, acquisition snapshots or label schema.
   Label exports retain case_id, ticker, filing_id, form_type, metric, the five
   observation fields, and review_status; reviewed/unreviewed rows remain distinct.
   Preserve values and dates as strings (nullable start dates), matching the
   initial flat export schema. Do not introduce floating-point EPS columns.
-- [ ] Keep backups, writer lock and recovery state under `.review/`, excluded
+- [x] Keep backups, writer lock and recovery state under `.review/`, excluded
   explicitly from current-bundle integrity hashing. Make a durable pending marker
   before committing a case, recording its expected replacement fingerprint.
-- [ ] Stage/validate derived files before replacement where possible. Individual
+- [x] Stage/validate derived files before replacement where possible. Individual
   atomic writes are not a multi-file transaction: an interrupted save must be
   recognized as synchronization pending, not a healthy complete save.
-- [ ] Retry/recover from authoritative cases under the writer lock; accept an
+- [x] Retry/recover from authoritative cases under the writer lock; accept an
   interrupted case change only when it matches the pending marker. Unexpected
   integrity mismatches still fail. Clear the marker only after all exports/hashes
   agree. Distinguish “labels saved, exports need retry” from “nothing saved.”
@@ -439,7 +440,77 @@ cannot overwrite; injected failures before/after the case commit and during an
 export are recoverable after restart without losing labels or claiming success.
 Do not test this writer on the real review dataset. Catalog wiring waits for 6.
 
-Handoff: Pending. Record on-disk recovery format, save/export APIs, and fault tests.
+Handoff (2026-10-21 UTC): complete. Implementation:
+
+- `review/persistence.py`: `save_changes(root, case_id, opened_fingerprint,
+  labels, clock=...)`, `retry_synchronization(root)`, read-only
+  `synchronization_pending(root)` and `verify_bundle(dataset)`. Returns
+  `SaveResult(dataset, case_id, changed)` only after full export/integrity
+  verification. `SaveConflict` refuses stale writes; `SynchronizationPending`
+  exposes `committed` and distinguishes nothing saved from labels committed
+  with exports needing retry. The injectable clock returns an explicit UTC datetime.
+- A local dataset-level POSIX `flock` on `.review/writer.lock` serializes writers.
+  A retained lock filename is not a stale lock; process exit releases ownership.
+  Writer paths reject symlinks, including aliases inside the bundle. Preflight
+  checks all bundle hashes/membership, source snapshots/documents, document
+  inventory/metadata and flat JSON/Parquet labels against authoritative cases.
+- Recovery format v1: `.review/pending.json` records `version`, a UUID transaction
+  ID, `case_path`, `backup`, `backup_canonical`, UTC `timestamp`, full baseline
+  file hashes/sizes, `integrity_before`, and ordered `replacements` hashes/sizes.
+  `.review/<transaction-id>/case.before.json` retains exact prior case bytes;
+  numbered files in that directory retain staged replacement bytes. Everything
+  is flushed/fsynced before the durable marker is written and before case commit.
+  State and backups remain outside bundle integrity scope; no automatic pruning.
+- Replacements are atomic individually: case first, label exports/metadata,
+  dataset manifest and review guide next, integrity last. Recovery accepts each
+  bundle file only at its baseline or exact planned replacement hash; immutable
+  sources must match baseline. It validates the backup and intended label/review
+  transition, rebuilds staged exports from cases plus the journal's intended case,
+  rechecks complete integrity, then durably clears the marker. This rolls forward
+  pre-commit interruptions as well as post-commit/export interruptions. Marker
+  cleanup failures retain recoverable state. No multi-file transaction is claimed.
+- `review/exports.py`: lossless flat rows and explicit string-only PyArrow schema,
+  including an entirely empty export; matching JSON/Parquet; observation, filing,
+  reviewed/unreviewed counts and aggregate review state; label metadata, Parquet
+  hash and REVIEW.md with current labels, source links, policy and review notes.
+  Dataset creation time and upstream metadata remain intact. Label metadata
+  preserves its initial generation as creation time and updates generation and
+  modification timestamps. Source/acquisition files and schema are not rewritten.
+- `review/app.py`, `session.py`, `dataset.py`: Save changes, saved-draft rebasing,
+  current-disk Discard, conflict/error messages and Retry synchronization. The app
+  detects pending recovery before loading aggregate counts, visibly blocks Save
+  and filing navigation, and retains drafts through failures. The loader's
+  `validate_counts=False` option permits pending stale aggregate counts while
+  preserving source/label checks. Normal loading still validates counts.
+- `tests/conftest.py`, `test_review_persistence.py`, `test_review_app.py`, README:
+  complete synthetic bundles, fake clocks, independent legacy-format exports,
+  precision/null/currency preservation, backups/source invariance, additions and
+  empty outputs, no/some/all-reviewed states, reviewed no-op/invalidation, stale
+  sessions, process locking/exit, symlink refusal and UI Save/restart/retry flows.
+  Faults cover staging, marker preparation, before case commit, several export
+  boundaries, integrity replacement, final verification and marker removal/fsync.
+  Uncaught interruption retains the durable journal. Unexpected case/source/
+  provenance/export/integrity/staging changes and new bundle files refuse recovery.
+
+Checks: predecessor baseline 140 tests passed; final 184 tests passed with network
+connections blocked. Python 3.14.8 repo-local compileall, import/version, `pip check`
+and `git diff --check` passed. The documented isolated wheel build passed; extracted
+wheel imports, new modules and packaged schema were verified. Streamlit started
+on localhost port 8514 with an explicit disposable synthetic bundle (headless,
+usage stats disabled); the health endpoint returned HTTP 200 / `ok`, then the
+process and temporary data were removed. Sandbox DNS blocked the first isolated
+build; an offline attempt lacked setuptools; the unchanged documented command
+succeeded with network access. Sandbox localhost binding was initially blocked;
+the authorized local startup check succeeded outside the sandbox. No real shared
+dataset was written. UI validation used Streamlit AppTest; no visual browser
+inspection is claimed for this step.
+
+Limitations/next action: Step 5, confirmation and full Save/Discard/Stay navigation.
+Step 4 supports label corrections only; Confirm and next and automatic catalog
+refresh remain absent. Writer locking requires a local POSIX filesystem; staging
+and backups are retained. Unexpected hash mismatches require restoring a known
+consistent file set, not automatic acceptance or hash regeneration. Keep pending
+`.review/` state with a copied bundle. Display limitations from Step 2 remain.
 
 ## Step 5 — Confirmation and guarded navigation
 

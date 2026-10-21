@@ -5,11 +5,12 @@ SEC documents collected by `finbot-filings`. The immediate implementation target
 is a local Streamlit UI for inspecting documents, correcting reported/adjusted
 diluted EPS labels, and confirming a golden dataset for later evaluation.
 
-**Current state:** Steps 1–3 are implemented. A local Streamlit app loads and
+**Current state:** Steps 1–4 are implemented. A local Streamlit app loads and
 validates the document EPS draft dataset, with filing/attachment selectors,
 isolated formatted HTML viewing, readable text fallback, original-file downloads,
-session-only EPS editing, row validation, review notes and saved status. Saving
-and confirmation are not implemented yet. The app writes no dataset files.
+EPS editing, row validation, review notes, saved status and **Save changes**.
+Saves include backups, synchronized exports, integrity refresh and restart-safe
+recovery. Confirmation is not implemented yet.
 The previous screenshot pipeline has been removed.
 
 ## Start a new implementation session
@@ -110,11 +111,11 @@ are required. Calendar dates, date order and duplicate periods are validated.
 
 Edits survive app reruns, attachment changes and document view changes within the
 session. **Unsaved changes** includes invalid/partial rows. Filing selection is
-disabled while edits are pending; choose **Discard changes** to restore the opened
-saved labels and unlock it. Returning all values to their saved state also clears
+disabled while edits are pending; choose **Save changes** to persist valid labels
+or **Discard changes** to restore the current saved labels and unlock it.
+Returning all values to their saved state also clears
 the unsaved indicator. Review notes and saved status are shown separately and are
-not edited by the table. These session-only edits are lost when the session ends;
-there is no Save or Confirm action yet.
+not edited by the table. Unsaved edits are lost when the session ends.
 
 Choose **Readable text** for text extracted directly from the original, without
 requiring precomputed `review-text/` files. **Download original HTML** returns
@@ -132,17 +133,63 @@ not fetched. Source bytes are never changed. Missing assets and removed styling
 mean this is not a pixel-identical rendering; wide tables can require horizontal
 scrolling. Use text fallback if a source layout is difficult to read.
 
-Later steps will add Save changes and Confirm and next beside the existing
-document viewer and filing-wide editor. Saving corrections and confirming a
-filing are distinct actions. Confirmation
-covers the complete package; changing a confirmed label reopens its review.
-Saved progress must survive restart. The dataset becomes human-reviewed only
-when all its filings have been confirmed.
+**Save changes** persists corrections without confirming an unreviewed filing.
+Changing labels of an already confirmed case resets it to unreviewed and clears
+its confirmation timestamp. A service-level no-op save preserves confirmation;
+the UI disables Save when nothing changed. Step 5 will add **Confirm and next**
+and Save/Discard/Stay navigation; Step 6 will add catalog refresh. Current filing
+navigation remains locked until pending edits are saved or discarded.
 
-The setup and launch commands below work now. Step 4 will enable durable
-saves and export synchronization; Step 5 will enable confirmation; Step 6 will
-add automatic catalog refresh for real shared-dataset saves. All write tests and
-browser QA use disposable copies.
+## Durable saves, backups and recovery
+
+Saving requires a complete bundle, including its existing integrity manifest,
+source/acquisition snapshots and JSON/Parquet exports. Before writing, the app
+checks all bundle hashes, source manifests, original documents and export agreement.
+Unexpected changes are refused. A case fingerprint is checked under a local
+dataset writer lock; a stale session keeps its pending edits and cannot overwrite
+another save. Use Discard changes to reload the latest saved labels, then reapply
+any desired corrections.
+
+The writer stages and validates all replacements, preserves the prior case bytes,
+records recovery state, atomically replaces the case and each derived file, then
+refreshes `integrity.json` last. It rebuilds `labels.json`, `labels.parquet`,
+`labels.metadata.json`, dataset counts/review state and `REVIEW.md`. Values and
+dates remain strings, including null starts and trailing zeroes. Creation times,
+upstream metadata, review notes and acquisition facts are retained; modification
+and export-generation timestamps are updated. Original documents, source metadata,
+provenance, acquisition snapshots and the label schema are never rewritten.
+
+Operational files are retained under the dataset's `.review/` directory:
+
+```text
+.review/
+├── writer.lock
+├── pending.json                   # present only while synchronization is pending
+└── <transaction-id>/
+    ├── case.before.json           # exact prior case bytes
+    └── 0, 1, ...                  # staged replacement bytes
+```
+
+`.review/` and `integrity.json` itself are explicitly excluded from current-bundle
+integrity hashing. Locks use POSIX `flock` on the local filesystem (macOS/Linux),
+release on process exit, and are separate from the retained lock filename.
+Transaction directories and backups are retained without automatic pruning.
+
+If saving fails, the app distinguishes **Nothing saved** from **Labels saved,
+exports need retry**. A durable pending marker keeps saves and filing navigation
+blocked, including after restart. Choose **Retry synchronization** to finish the
+recorded save under the same lock. Recovery checks original and expected replacement
+hashes, rebuilds exports from authoritative cases and the recorded intended case,
+and clears the marker only after final agreement. It can finish a save interrupted
+before the case commit as well as one interrupted afterward. Pending edits remain
+in the current session; an uncommitted intended case also remains staged on disk.
+
+Do not remove a pending marker or manually refresh hashes to bypass an error.
+Unexpected source, case, export or staging changes cause recovery to refuse writes;
+restore the affected files from a known consistent copy before retrying. Keep
+`.review/` with a bundle copy if it has a pending save. Catalog outputs are not
+automatically refreshed in Step 4. All write tests use synthetic temporary bundles
+and injectable clocks; browser QA uses disposable copies.
 
 ## Setup and launch
 
@@ -176,7 +223,8 @@ From the repository root, override the dataset explicitly with:
 `--dataset-root` takes precedence over `FINBOT_DATA_ROOT`. Otherwise the app
 appends `filing-evals/golden/earnings-eps-v1` to the shared data root. Missing
 configuration, unavailable files or failed validation show an error; the app
-never creates a dataset or substitutes another corpus. It writes no dataset files.
+never creates a dataset or substitutes another corpus. Opening/editing is read-only;
+Save changes and Retry synchronization explicitly write to the selected bundle.
 
 ## Dataset foundation
 
@@ -184,8 +232,11 @@ never creates a dataset or substitutes another corpus. It writes no dataset file
 `review.dataset.load_dataset(root)` validates the manifest and cases in listed
 order, the packaged `earnings_eps.v1` label contract, filing snapshots, complete
 artifact membership, original document sizes/hashes and confined relative paths
-(including symlinks). It reads authoritative inputs rather than derived exports;
-full bundle/export synchronization checks belong to Step 4.
+(including symlinks). It reads authoritative inputs rather than derived exports.
+The writer's `verify_bundle(dataset)` checks full integrity and export agreement.
+`load_dataset(root, validate_counts=False)` is used during pending synchronization
+because a committed case may temporarily disagree with stale manifest counts;
+source and label validation remain enabled. Ordinary loading validates counts.
 
 The immutable `ReviewDataset`, `ReviewCase`, `SourceDocument` and `Observation`
 models retain original decimal strings and nullable dates. Dataset/case
@@ -202,6 +253,16 @@ a valid payload or no payload. `review.session.EditorDraft` retains the opened
 fingerprint, stable widget input, pending rows, dirty status and discard generation.
 These helpers do not import Streamlit or write files.
 
+`review.persistence.save_changes(root, case_id, opened_fingerprint, labels,
+clock=...)` returns `SaveResult(dataset, case_id, changed)` after full verification.
+`SaveConflict` retains stale drafts; `SynchronizationPending.committed` distinguishes
+whether the intended case bytes reached disk. `synchronization_pending(root)` is
+read-only; `retry_synchronization(root)` finishes an interrupted save. The v1
+`pending.json` records the baseline inventory, expected replacement digests/sizes,
+prior integrity digest, case/backup paths, transaction ID and UTC modification time.
+`review.exports.build_exports()` is UI-independent and stages string-only Parquet
+and matching JSON in memory. These services require the `review` extra's PyArrow.
+
 ## Checks
 
 The core loader requires `jsonschema`. The `dev` extra installs pytest; the
@@ -210,7 +271,8 @@ tinycss2. Re-run the editable install command after updating to Step 2 to instal
 the HTML tooling. Loading a dataset does not import the UI dependencies. The
 former screenshot tests were removed; the new tests cover the dataset contract,
 path/source validation, viewer isolation/sanitization, lossless editor conversion,
-row validation, pending edits/discard and app navigation/downloads.
+row validation, pending edits/discard, app navigation/downloads, saves, stale writes,
+process locking, export agreement and injected failure/restart recovery.
 
 Compile and verify the installed package:
 

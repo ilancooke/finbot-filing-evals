@@ -265,7 +265,7 @@ def _case(root: Path, relative: str) -> ReviewCase:
                       tuple(documents), labels, status, notes, deepcopy(record))
 
 
-def load_dataset(root: str | Path) -> ReviewDataset:
+def load_dataset(root: str | Path, *, validate_counts: bool = True) -> ReviewDataset:
     """Load authoritative cases in manifest order; never read/write derived exports."""
     try:
         directory = Path(root).expanduser().resolve(strict=True)
@@ -303,6 +303,6 @@ def load_dataset(root: str | Path) -> ReviewDataset:
         cases.append(case)
     dataset = ReviewDataset(directory, dataset_id, hashlib.sha256(raw).hexdigest(), tuple(cases), deepcopy(manifest))
     for key, count in (("case_count", len(cases)), ("document_count", dataset.document_count), ("observation_count", dataset.observation_count)):
-        if key in manifest and (type(manifest[key]) is not int or manifest[key] != count):
+        if validate_counts and key in manifest and (type(manifest[key]) is not int or manifest[key] != count):
             raise ReviewError(f"dataset.json.{key} does not match the authoritative case files ({count}).")
     return dataset

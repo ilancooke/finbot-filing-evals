@@ -76,6 +76,7 @@ def make_dataset(tmp_path):
             case_paths.append((case_dir / "case.json").relative_to(root).as_posix())
         save_json(root / "labels.schema.json", load_label_schema())
         save_json(root / "dataset.json", dict(schema_version="earnings_eps.v1", dataset_id="synthetic-review",
+                                              created_at_utc="2026-01-01T00:00:00Z",
                                               cases=case_paths, label_schema="labels.schema.json",
                                               case_count=2, document_count=3, observation_count=4,
                                               custom_dataset_metadata={"keep": [1, 2]}))
@@ -97,3 +98,43 @@ def case_file(dataset_root):
 @pytest.fixture
 def labels(case_file):
     return deepcopy(json.loads(case_file.read_text())["labels"])
+
+
+def prepare_bundle(root):
+    """Complete a synthetic loader fixture with acquisition files and exports."""
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+    from finbot_filing_evals.review.dataset import load_dataset
+    from finbot_filing_evals.review.exports import build_exports
+    from finbot_filing_evals.review.persistence import inventory
+
+    dataset = load_dataset(root)
+    for case in dataset.cases:
+        save_json(case.path.parent / 'filing-ready.json', case.to_dict()['filing'])
+        save_json(case.path.parent / 'provenance.json', {'synthetic': True, 'notes': ['preserve acquisition']})
+    pq.write_table(pa.Table.from_pylist([
+        {'artifact_id': doc.artifact_id, 'path': doc.relative_path, 'sha256': doc.sha256}
+        for case in dataset.cases for doc in case.documents
+    ]), root / 'documents.parquet')
+    save_json(root / 'documents.metadata.json', {
+        'row_count': dataset.document_count,
+        'sha256': hashlib.sha256((root / 'documents.parquet').read_bytes()).hexdigest(),
+        'provider': 'synthetic', 'partial': False,
+    })
+    metadata = dict(dataset_name='synthetic.labels', owner_repo='finbot-filing-evals',
+                    generated_at_utc='2026-01-01T00:00:00Z', provider='synthetic',
+                    custom_acquisition_field={'keep': 1})
+    for name, raw in build_exports(dataset, [case.to_dict() for case in dataset.cases], metadata, '2026-01-02T00:00:00Z').items():
+        (root / name).write_bytes(raw)
+    save_json(root / 'integrity.json', {'algorithm': 'sha256', 'files': inventory(root)})
+    return root
+
+
+@pytest.fixture
+def writable_dataset(dataset_root, monkeypatch):
+    from datetime import datetime, timezone
+    from finbot_filing_evals.review import persistence
+
+    pytest.importorskip('pyarrow')
+    monkeypatch.setattr(persistence, '_now', lambda: datetime(2026, 10, 20, 12, 30, tzinfo=timezone.utc))
+    return prepare_bundle(dataset_root)

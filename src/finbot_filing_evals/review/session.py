@@ -49,3 +49,10 @@ class EditorDraft:
         self.rows = deepcopy(self.base_rows)
         # A fresh widget key drops Streamlit's old edit/add/delete deltas.
         self.generation += 1
+
+    def accept_saved(self, labels: dict[str, Any], fingerprint: str) -> None:
+        """Rebase on a durable saved case and drop old editor deltas."""
+        self.saved_labels = deepcopy(labels)
+        self.opened_fingerprint = fingerprint
+        self.base_rows = labels_to_rows(labels)
+        self.discard()

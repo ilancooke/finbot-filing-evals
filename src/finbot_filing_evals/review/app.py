@@ -1,4 +1,4 @@
-"""Document inspection and session-only filing-wide label editing."""
+"""Document inspection, filing-wide editing and durable local saves."""
 
 from collections.abc import Sequence
 from hashlib import sha256
@@ -7,6 +7,7 @@ from .config import parse_dataset_root
 from .dataset import ReviewDataset, load_dataset
 from .editor import COLUMNS, METRIC_NAMES, validate_rows
 from .errors import ReviewError
+from .persistence import save_changes, retry_synchronization, synchronization_pending
 from .session import EditorDraft
 from .viewer import initial_attachment, plain_text_preview, viewer_frame
 
@@ -22,13 +23,13 @@ def _change_filing(namespace: str) -> None:
         if editor_key in st.session_state:
             draft.capture_widget_changes(st.session_state[editor_key])
     # Also guard delayed selector events arriving after a table edit.
-    if draft is not None and draft.dirty:
+    if st.session_state.get(f"{namespace}:pending", False) or (draft is not None and draft.dirty):
         st.session_state[f"{namespace}:filing"] = active
     else:
         st.session_state[active_key] = st.session_state[f"{namespace}:filing"]
 
 
-def _show_dataset(dataset: ReviewDataset) -> None:
+def _show_dataset(dataset: ReviewDataset, *, pending: bool = False) -> None:
     # UI dependencies stay optional: loading/validating a dataset does not need them.
     import pandas as pd
     import streamlit as st
@@ -47,6 +48,8 @@ def _show_dataset(dataset: ReviewDataset) -> None:
     if draft_key not in st.session_state:
         st.session_state[draft_key] = EditorDraft(case.to_dict()["labels"], case.fingerprint)
     draft = st.session_state[draft_key]
+    if not draft.dirty and draft.opened_fingerprint != case.fingerprint:
+        draft.accept_saved(case.to_dict()["labels"], case.fingerprint)
     st.subheader(f"{case.ticker} · {case.form_type}")
     st.caption(f"{case.filing_id} · Saved review status: {case.review_status.replace('_', ' ').title()}")
     left, right = st.columns([3, 2])
@@ -119,7 +122,7 @@ def _show_dataset(dataset: ReviewDataset) -> None:
         draft.rows = edited.to_dict("records")  # nullable string dtype exports blanks as None
         result = validate_rows(draft.rows)
         if draft.dirty:
-            st.warning("Unsaved changes — session only. Discard changes before switching filings.")
+            st.warning("Unsaved changes — Save changes or Discard changes before switching filings.")
         else:
             st.caption("No unsaved changes. Table values match the saved labels.")
         if draft.opened_fingerprint != case.fingerprint:
@@ -142,7 +145,7 @@ def _show_dataset(dataset: ReviewDataset) -> None:
     # same response that first shows unsaved changes, including invalid rows.
     st.sidebar.selectbox(
         "Filing", options=list(cases), index=list(cases).index(case.case_id),
-        key=f"{namespace}:filing", disabled=draft.dirty,
+        key=f"{namespace}:filing", disabled=draft.dirty or pending,
         on_change=_change_filing, args=(namespace,),
         format_func=lambda key: (
             f"{cases[key].ticker} · {cases[key].form_type} · "
@@ -150,12 +153,31 @@ def _show_dataset(dataset: ReviewDataset) -> None:
         ),
     )
     st.sidebar.button(
-        "Discard changes", disabled=not draft.dirty, on_click=draft.discard,
+        "Discard changes", disabled=not draft.dirty,
+        on_click=draft.accept_saved, args=(case.to_dict()["labels"], case.fingerprint),
         key=f"{namespace}:{case.case_id}:discard",
-        help="Restore the labels opened from disk. All edits in this session are temporary.",
+        help="Restore the current saved labels and clear pending editor changes.",
     )
+    if st.sidebar.button(
+        "Save changes", disabled=pending or bool(result.errors) or not draft.dirty,
+        key=f"{namespace}:{case.case_id}:save",
+        help="Save valid corrections without confirming the filing.",
+    ):
+        try:
+            saved = save_changes(dataset.root, case.case_id, draft.opened_fingerprint, result.labels)
+            current = next(item for item in saved.dataset.cases if item.case_id == case.case_id)
+            draft.accept_saved(current.to_dict()["labels"], current.fingerprint)
+            st.session_state[f"{namespace}:save_notice"] = "Labels saved and exports synchronized. Filing remains unreviewed."
+            st.rerun()
+        except ReviewError as error:
+            st.error(str(error))
+            # Re-render immediately after partial commits so navigation is locked
+            # and stale aggregate counts cannot appear healthy.
+            if synchronization_pending(dataset.root):
+                st.session_state[f"{namespace}:save_error"] = str(error)
+                st.rerun()
     if draft.dirty:
-        st.sidebar.caption("Filing selection is locked until you explicitly discard pending changes.")
+        st.sidebar.caption("Filing selection is locked until you save or discard pending changes.")
 
 
 def main(argv: Sequence[str] | None = None) -> None:
@@ -164,10 +186,33 @@ def main(argv: Sequence[str] | None = None) -> None:
     st.set_page_config(page_title="EPS dataset review", layout="wide")
     st.title("EPS dataset review")
     st.info(
-        "Session-only editing. Dataset files are unchanged; edits are lost when this session ends. "
-        "Saving and confirmation are not available yet."
+        "Save changes persists corrections and synchronizes exports. Saving does not confirm a filing. "
+        "Confirmation is not available yet. Unsaved edits are lost when the session ends."
     )
     try:
-        _show_dataset(load_dataset(parse_dataset_root(argv)))
+        root = parse_dataset_root(argv)
+        namespace = sha256(str(root.resolve()).encode()).hexdigest()[:16]
+        pending = synchronization_pending(root)
+        st.session_state[f"{namespace}:pending"] = pending
+        save_error = st.session_state.pop(f"{namespace}:save_error", None)
+        if save_error:
+            st.error(save_error)
+        if pending:
+            st.warning("Synchronization pending. A save may have committed labels; exports are not yet verified. Retry before further saves or navigation.")
+            if st.button("Retry synchronization"):
+                try:
+                    recovered = retry_synchronization(root)
+                    current = next(case for case in recovered.dataset.cases if case.case_id == recovered.case_id)
+                    draft = st.session_state.get(f"{namespace}:{current.case_id}:draft")
+                    if draft is not None and validate_rows(draft.rows).labels == current.to_dict()["labels"]:
+                        draft.accept_saved(current.to_dict()["labels"], current.fingerprint)
+                    st.session_state[f"{namespace}:save_notice"] = "Labels saved and exports synchronized."
+                    st.rerun()
+                except ReviewError as error:
+                    st.error(str(error))
+        notice = st.session_state.pop(f"{namespace}:save_notice", None)
+        if notice:
+            st.success(notice)
+        _show_dataset(load_dataset(root, validate_counts=not pending), pending=pending)
     except ReviewError as error:
         st.error(str(error))
