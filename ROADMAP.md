@@ -1,834 +1,431 @@
-# Visual Financial-Statement Golden Dataset Roadmap
+# Document EPS Review UI Roadmap
 
-## Scope and guiding contract
+## Purpose and current state
 
-This roadmap builds a benchmark for faithfully reconstructing tables as they
-appear in screenshots of SEC financial statements. The visual benchmark records
-what a statement says, not what downstream accounting logic thinks it means.
+Build a local Streamlit app in `finbot-filing-evals` for a person to inspect
+original SEC documents, correct EPS labels, and confirm each filing package.
+Read this file and README.md before starting a step; no previous chat is needed.
 
-The source convention is:
-
-```text
-$FINBOT_DATA_ROOT/raw/financial_statement_screenshots_golden_dataset/
-└── {TICKER}/
-    ├── 10k balance sheet.png
-    ├── 10k income statement.png
-    ├── 10k cash flows.png
-    ├── 10q balance sheet.png
-    ├── 10q income statement.png
-    └── 10q cash flows.png
-```
-
-Ticker, filing type, and statement type are path-derived facts. No model may be
-asked to infer them. A model transcribes statement-level raw text, an ordered
-row manifest, an ordered value-column manifest, and visible table cells. Rows
-include meaningful standalone no-value section headings. Hierarchies use
-arbitrary-depth `row_path_raw` and `column_path_raw` arrays; raw fields are never
-overwritten by comparison or accounting normalization.
-
-The implemented package root is
-`src/finbot_filing_evals/golden_dataset/`. Generated data lives outside the
-repository under the configured finbot data root:
+The draft dataset already exists at:
 
 ```text
-$FINBOT_DATA_ROOT/
-├── raw/financial_statement_screenshots_golden_dataset/
-├── intermediate/
-│   ├── golden_dataset_annotations/{provider}/
-│   └── golden_dataset_consensus/
-└── processed/financial_statement_visual_gold/
+$FINBOT_DATA_ROOT/filing-evals/golden/earnings-eps-v1/
 ```
 
-Raw source images and generated provider responses are immutable inputs. New
-runs use new versioned/run directories rather than overwriting prior results.
-API-backed tests remain opt-in and never run as part of the normal unit suite.
-
-## Milestone 0 — Project scaffold and contracts
-
-### Purpose
-
-Establish package boundaries, shared types, deterministic source discovery,
-configuration, and the provider contract without external API calls.
-
-### Inputs
-
-- Repository packaging and testing conventions.
-- The screenshot directory hierarchy and filename convention.
-- `FINBOT_DATA_ROOT` or explicit path overrides.
-- Image bytes used to create stable SHA-256 identities.
-
-### Outputs
-
-- `finbot_filing_evals.golden_dataset` package scaffold.
-- Typed statement, cell, extraction request, and result-envelope models.
-- Deterministically ordered screenshot records with path-derived metadata.
-- Shared filesystem configuration and provider protocol.
-- Unit tests and an environment-dependent 90-image corpus acceptance test.
-
-### Implementation tasks
-
-- [x] Inspect repository architecture and available Python/test environment.
-- [x] Create a `src/` package scaffold for discovery, extraction, prompts,
-  consensus, export, and validation.
-- [x] Define statement metadata, including raw title/units extension points.
-- [x] Define one-record-per-visible-value-cell annotations.
-- [x] Represent row and column hierarchy with arbitrary-depth sequences.
-- [x] Define provider-neutral extraction request and auditable result envelope.
-- [x] Capture provider/model, prompt/schema version, timestamp, raw response,
-  parsed response, usage, status/error, and retry metadata in the contracts.
-- [x] Define filing type, statement type, provider, and status enums.
-- [x] Discover screenshots deterministically from direct ticker children.
-- [x] Validate uppercase ticker directories and exact expected filenames.
-- [x] Derive ticker, filing type, statement type, and statement ID from paths.
-- [x] Compute streaming SHA-256 hashes and content-based source image IDs.
-- [x] Define a runtime-checkable common provider protocol.
-- [x] Define prompt naming (`<task>_v<N>.txt`) and serialized schema naming
-  (`<contract>.v<N>`) conventions.
-- [x] Document environment variables, output roots, setup, and test commands.
-- [x] Add unit tests for discovery, derivation, hashing, models, and config.
-- [x] Add a conditional acceptance test for the complete source corpus.
-
-### Important design decisions
-
-- Standard-library frozen dataclasses and enums define shared benchmark
-  records. Milestone 1 uses a checked-in JSON Schema plus `jsonschema` for the
-  separate provider-facing wire contract.
-- `statement_id` is `{TICKER}_{10K|10Q}_{statement_type}` for the current corpus,
-  which has exactly one image for each combination.
-- `source_image_id` is `sha256:<lowercase digest>` and the digest is retained
-  separately for manifest use.
-- Discovery ignores hidden files such as `.DS_Store`, but rejects any visible
-  unexpected file, nested directory, invalid ticker, or misnamed screenshot.
-- Completeness and expected-count checks are explicit options. This permits
-  valid pilot subsets while allowing the full corpus to require six images per
-  ticker and 90 total.
-- Configuration resolves paths without creating directories. Artifact writers
-  introduced later must implement explicit no-overwrite behavior.
-- Provider-specific SDK objects may be retained in memory as raw responses, but
-  adapters must serialize losslessly/auditably before artifact persistence.
-- `visual_metadata` is an extension point for optional presentation features;
-  the core contract does not prematurely prescribe indentation or styling.
-
-### Tests and acceptance criteria
-
-- [x] Synthetic fixtures are returned in the same identity order regardless of
-  creation order.
-- [x] Metadata derivation uses only directory and filename components.
-- [x] Misnamed PNGs and incomplete sets fail with actionable errors when the
-  relevant validation is enabled.
-- [x] Raw parentheses and arbitrary-depth row/column paths remain unchanged.
-- [x] Successful envelopes require both raw and parsed responses; failures
-  retain structured error details.
-- [x] When the source corpus is present, exactly 90 unique statement IDs across
-  15 tickers are discovered twice with identical records and hashes.
-- [x] Normal tests make no network requests.
-
-### Explicitly out of scope
-
-- Provider SDKs or API calls.
-- The frozen model-facing extraction JSON schema and prompt text.
-- Writing annotation artifacts, retry orchestration, or a CLI runner.
-- Comparison normalization, alignment, consensus, review, or gold export.
-- Accounting normalization and financial calculations.
-
-### Dependencies
-
-- None. This is the foundation for every later milestone.
-
-## Milestone 1 — Extraction schema and prompt
-
-### Purpose
-
-Freeze V1 of the provider-neutral, pure visual/table extraction contract before
-integrating any external model.
-
-### Inputs
-
-- Milestone 0 models and version conventions.
-- Representative screenshots covering multi-level rows/columns and visual
-  edge cases.
-- Hand-authored valid and malformed response fixtures.
-
-### Outputs
-
-- Immutable `prompts/visual_table_extraction_v1.txt`.
-- A machine-enforceable V1 structured response schema.
-- Conversion from validated response documents into shared raw models.
-- Written transcription rules and fixture corpus.
-
-### Implementation tasks
-
-- [x] Choose a lightweight validation mechanism (checked-in JSON Schema plus
-  `jsonschema`) and document the dependency decision.
-- [x] Define a complete structured response schema with raw statement text,
-  ordered row/column manifests, and indexed cell records.
-- [x] Support arbitrary-depth `row_path_raw` and `column_path_raw` arrays.
-- [x] Preserve `value_raw`, including whitespace when meaningful, parentheses,
-  currency marks, dashes, footnote marks, and empty displayed values.
-- [x] Preserve `statement_title_raw` and `units_raw` exactly as visible.
-- [x] Specify treatment of section headings, blank values, spanning headers,
-  repeated labels, footnotes, indentation, subtotal/total rows, and decorative
-  content.
-- [x] Decide whether deliberately represented blank cells are cell records and
-  encode that choice unambiguously.
-- [x] Write `visual_table_extraction_v1` with explicit prohibitions on concept
-  mapping, arithmetic, period inference, units conversion, and row combining.
-- [x] Include examples for Apple's multi-index period columns, `Net sales →
-  Products`, `(171)`, and statement-level units.
-- [x] Ensure examples do not accidentally teach accounting normalization.
-- [x] Add a schema-version migration policy: never mutate V1 after use; create
-  V2 and preserve readers for old stored artifacts.
-
-### Important design decisions
-
-- The logical schema must be identical across provider families even if their
-  native structured-output features differ.
-- Indices are contiguous and zero-based. Row indices include all meaningful
-  data and section-heading rows; column indices include value columns only.
-- The wire response normalizes paths into row and column manifests. Wire cells
-  contain only `row_index`, `column_index`, and `value_raw`; conversion hydrates
-  the required self-contained cell records deterministically.
-- Every meaningful row is recorded as `data` or `section_heading`. Totals and
-  subtotals remain data rows rather than semantic classifications.
-- A clearly present blank intersection is a cell with `value_raw: ""`; `null`
-  is reserved for a visibly absent statement title or units string.
-- Unknown response fields are rejected at every object level.
-- Presentation flags beyond hierarchy are deferred to a future schema version.
-- Raw transcription fields must never contain comparison-normalized values.
-- Prompt and schema versions are independently recorded because either may
-  change without the other.
-
-### Tests and acceptance criteria
-
-- [x] Valid fixtures deserialize into typed statement, row, column, and cell
-  annotations.
-- [x] Malformed fixtures fail clearly for empty paths, wrong types, invalid
-  indices, missing/extra fields, invalid references, and structural conflicts.
-- [x] Deterministic statement IDs and source metadata are injected during
-  conversion and are not echoed or inferred by the model.
-- [x] Round trips preserve every `_raw` string byte-for-byte at the JSON string
-  level.
-- [x] Deep (more than two-level) row and column paths validate successfully.
-- [x] The packaged prompt and schema are loadable by version and their
-  checksums are testable.
-- [x] No external provider integration is required or invoked.
-
-### Explicitly out of scope
-
-- Calling OpenAI, Anthropic, or Qwen.
-- Comparison normalization or deciding whether two raw strings agree.
-- Canonical accounting concepts, numeric parsing, unit scaling, or derived
-  periods and values.
-
-### Dependencies
-
-- Milestone 0 contracts, discovery, configuration, and version policy.
-
-## Milestone 2 — OpenAI extraction adapter and pilot runner
-
-### Purpose
-
-Implement the first production-quality vision extraction backend and exercise
-the frozen contract on a small representative pilot.
-
-### Inputs
-
-- Milestone 1 prompt and response schema.
-- Discovered source records and immutable images.
-- `OPENAI_API_KEY` supplied at runtime.
-- Explicit provider/model and run configuration.
-
-### Outputs
-
-- OpenAI adapter implementing `ExtractionProvider`.
-- Versioned, immutable raw and parsed annotation artifacts.
-- A CLI runner for controlled subsets and resumable runs.
-- Pilot annotations and run manifest, not consensus or gold data.
-
-### Implementation tasks
-
-- [ ] Add the OpenAI SDK as an optional/provider-specific dependency.
-- [ ] Send one screenshot per independent request with dense-document,
-  high-detail image settings.
-- [ ] Use native structured output/schema enforcement when supported.
-- [ ] Record the exact requested model and returned model version when exposed.
-- [ ] Implement bounded timeouts, classified retries, exponential backoff, and
-  rate-limit handling without changing request semantics.
-- [ ] Log identifiers and outcomes without leaking credentials or full private
-  payloads into console logs.
-- [ ] Persist the raw provider response before/alongside parsing; never discard
-  it after successful parsing.
-- [ ] Persist the parsed common annotation separately from the raw response.
-- [ ] Capture usage/token/cost-relevant metadata when returned.
-- [ ] Write atomically into a run-scoped immutable artifact directory and
-  refuse accidental overwrite.
-- [ ] Add runner selectors for one file, one ticker, limited sample, and all
-  files.
-- [ ] Add dry-run output showing selected inputs, versions, and destination with
-  no API request or directory mutation.
-- [ ] Add resume/skip-successful behavior based on validated existing envelopes.
-- [ ] Pilot on a small set spanning filing types, statement types, dense
-  columns, nested rows, parentheses, footnotes, and blank cells.
-
-### Important design decisions
-
-- Extraction and consensus stay in separate modules and artifact trees.
-- Retry attempts target the same source, prompt, schema, and model; retry count
-  is part of the envelope.
-- A success marker is written only after raw persistence and parsed validation
-  both complete.
-- Model responses are independent requests and receive no previous annotation.
-- Cost controls and an explicit `--all` selection guard should prevent an
-  accidental 90-image run during development.
-
-### Tests and acceptance criteria
-
-- [ ] Unit tests mock transport behavior for success, invalid structured output,
-  timeouts, rate limits, retries, and usage capture.
-- [ ] Dry-run and selector tests prove the exact intended file set.
-- [ ] Resume skips only fully validated successful artifacts and retries failed
-  or incomplete artifacts explicitly.
-- [ ] Raw and parsed records link to identical source, prompt, schema, provider,
-  and request metadata.
-- [ ] A manually triggered pilot produces auditable stored annotations for the
-  selected images.
-- [ ] Normal unit tests require neither network nor API key.
-
-### Explicitly out of scope
-
-- Anthropic and Qwen adapters.
-- Passing annotations between providers.
-- Cell alignment, consensus, adjudication, or gold publication.
-- Full-corpus execution until pilot quality and cost are reviewed.
-
-### Dependencies
-
-- Milestones 0 and 1.
-
-## Milestone 3 — Additional independent provider adapters
-
-### Purpose
-
-Generate genuinely independent annotations from Anthropic Claude and Qwen
-using the same logical extraction task.
-
-### Inputs
-
-- Frozen Milestone 1 contract and prompt semantics.
-- Milestone 2 artifact/run conventions and source selection behavior.
-- Runtime `ANTHROPIC_API_KEY` and `QWEN_API_KEY` (plus endpoint configuration if
-  Qwen deployment requires it).
-
-### Outputs
-
-- Anthropic and Qwen adapters implementing the common provider contract.
-- Provider-native raw responses and common parsed annotations.
-- Comparable run manifests for the same image set across all providers.
-
-### Implementation tasks
-
-- [ ] Add each SDK/client only in its provider-specific optional dependency.
-- [ ] Implement Claude adapter with provider-native error and usage capture.
-- [ ] Implement Qwen adapter with provider-native error and usage capture.
-- [ ] Map both responses into the exact common extraction schema.
-- [ ] Keep task instructions logically equivalent while documenting unavoidable
-  API/structured-output/image-transport differences.
-- [ ] Reuse selectors, dry-run, retry, atomic persistence, and resume semantics.
-- [ ] Guarantee one independent request per provider per source image.
-- [ ] Prohibit provider annotations from appearing in another provider's input.
-- [ ] Support an explicit multi-provider run over the same frozen manifest.
-
-### Important design decisions
-
-- Provider-native response envelopes remain separate, while every extracted
-  structured body validates against the same frozen wire schema and converts to
-  the same parsed annotation models.
-- Model family names are not sufficient provenance: exact identifiers, returned
-  versions, endpoints where relevant, and timestamps are retained.
-- Independence is enforced in the runner/input construction, not merely stated
-  in the prompt.
-- Provider-specific failures do not block successful annotations from other
-  providers and remain retryable/auditable.
-
-### Tests and acceptance criteria
-
-- [ ] Mocked contract tests run identically against every adapter.
-- [ ] Provider-specific raw fixtures map to the common schema without losing
-  their original responses.
-- [ ] The same test image can independently produce stored annotations from
-  OpenAI, Anthropic, and Qwen in an opt-in integration run.
-- [ ] Request capture proves no provider receives another provider's answer.
-- [ ] Normal tests remain network-free and credentials remain uncommitted.
-
-### Explicitly out of scope
-
-- Cross-provider adjudication or LLM-as-judge behavior.
-- Comparison normalization, alignment, and consensus.
-- Accounting or financial normalization.
-
-### Dependencies
-
-- Milestones 0–2.
-
-## Milestone 4 — Deterministic annotation comparison
-
-### Purpose
-
-Conservatively align multiple provider annotations at cell level without using
-an LLM to decide equivalence.
-
-### Inputs
-
-- Successful parsed annotations for the same source image from multiple
-  providers.
-- Every provider's untouched raw fields and structural indices.
-- A versioned comparison-normalization policy.
-
-### Outputs
-
-- Deterministic normalized comparison keys stored separately from raw values.
-- Ordered row- and column-manifest alignments, including standalone section
-  headings, row kinds, missing/extra structure, and hierarchy disagreements.
-- Cell alignments with matched, missing, extra, hierarchy-disagreement, and
-  value-disagreement evidence.
-- Document-level structural statistics and explainable diagnostics.
-
-### Implementation tasks
-
-- [ ] Define and version conservative comparison normalization.
-- [ ] Trim inconsequential leading/trailing whitespace and normalize repeated
-  whitespace only where explicitly justified.
-- [ ] Specify conservative punctuation and currency-symbol handling with tests.
-- [ ] Normalize row path, column path, and value independently for comparison.
-- [ ] Never modify `row_path_raw`, `column_path_raw`, or `value_raw`.
-- [ ] Align ordered row and column manifests before aligning cells, preserving
-  standalone no-value rows and comparing `data` versus `section_heading` kinds.
-- [ ] Define deterministic cell identity/matching order using paths and indices.
-- [ ] Detect missing and extra cells separately.
-- [ ] Detect hierarchy and header-structure disagreements.
-- [ ] Detect value disagreements among otherwise aligned cells.
-- [ ] Produce per-document row/column counts and structural summaries.
-- [ ] Define duplicate-label/cell behavior and surface ambiguity explicitly.
-- [ ] Avoid fuzzy matching initially; if later introduced, make thresholds,
-  ordering, and error behavior explicit and measurable.
-
-### Important design decisions
-
-- Comparison normalization is string equivalence for annotation comparison, not
-  numeric parsing or accounting normalization.
-- Row path, column path, and value agreement are separate dimensions.
-- Structural row/column alignments are first-class outputs rather than
-  synthetic blank cells.
-- Alignment output retains pointers to every original provider annotation.
-- Ambiguous alignment is a result to review, not an invitation for a hidden
-  heuristic or semantic guess.
-
-### Tests and acceptance criteria
-
-- [ ] `"78,678"` and `" 78,678 "` compare equal under the documented rule while
-  both raw values remain retrievable.
-- [ ] Parentheses, signs, decimals, dashes, currency symbols, and footnotes have
-  explicit conservative test cases.
-- [ ] Fixtures detect missing/extra rows and columns, row-kind conflicts,
-  structural/path disagreements, and missing/extra/value-conflicting cells.
-- [ ] Reordering and duplicate labels behave deterministically.
-- [ ] Repeated runs produce byte-identical alignment output.
-- [ ] No LLM or network call participates in comparison.
-
-### Explicitly out of scope
-
-- Majority/unanimous classification policy.
-- Human correction or final-gold selection.
-- Semantic row mapping, numeric conversion, fuzzy accounting synonyms, and
-  inferred dates/periods.
-
-### Dependencies
-
-- Milestones 0–3 and at least two provider annotations per compared image.
-
-## Milestone 5 — Consensus classification
-
-### Purpose
-
-Convert deterministic alignments into candidate-gold records and focused
-review queues without treating agreement as proof of truth.
-
-### Inputs
-
-- Milestone 4 alignments and disagreement evidence.
-- Provider/run/source provenance for every annotation.
-- A versioned classification policy.
-
-### Outputs
-
-- Agreement classifications for cell groups and structural records:
-  `unanimous`, `majority`, `conflict`, `missing_conflict`, and
-  `structure_conflict` at minimum, as applicable to the record type.
-- Row- and column-structure consensus records, including standalone section
-  headings, paths, kinds, ordering, and missing/extra structure.
-- Candidate values and candidate row/column structures where policy permits,
-  still linked to all raw annotations.
-- Review queues and summary metrics by relevant dimensions.
-
-### Implementation tasks
-
-- [ ] Define exact classification precedence for overlapping disagreement types.
-- [ ] Classify every aligned cell group deterministically.
-- [ ] Classify aligned row and column structures independently from cell values,
-  including row paths, row kinds, column paths, order, and presence.
-- [ ] Retain links to all source provider annotations and their raw fields.
-- [ ] Mark candidates as unreviewed rather than final gold.
-- [ ] Generate metrics per provider, statement, ticker, filing type, and
-  statement type.
-- [ ] Include cells extracted, unanimous, majority, conflict, missing, extra,
-  and structure-conflict counts/rates.
-- [ ] Include row/column extracted, matched, missing, extra, and conflicting
-  counts/rates, including standalone section headings.
-- [ ] Capture document-level cell completeness and structural summaries.
-- [ ] Version classification logic and record its version in output metadata.
-
-### Important design decisions
-
-- `unanimous` means provider agreement under a versioned comparison rule; it
-  does not mean human-verified correctness.
-- Majority requires a defined minimum provider count and an unambiguous winning
-  raw/normalized representation.
-- Structure conflicts are first-class row, column, or document results and take
-  precedence where cell identity itself is uncertain; they are not forced into
-  synthetic value-cell records.
-- Metrics distinguish missing provider output from explicit blank table cells.
-
-### Tests and acceptance criteria
-
-- [ ] Fixtures cover every classification and precedence combination.
-- [ ] Each cell and structural result can trace back to every contributing raw
-  annotation.
-- [ ] Cell totals and row/column structural totals reconcile independently.
-- [ ] Provider/statement/ticker/form/type aggregations are deterministic.
-- [ ] No unanimous or majority result is labeled final or verified by default.
-
-### Explicitly out of scope
-
-- Human adjudication and audit sampling.
-- Changing provider annotations.
-- Accounting normalization or feature calculation.
-
-### Dependencies
-
-- Milestone 4 and a documented minimum provider set.
-
-## Milestone 6 — Human review workflow
-
-### Purpose
-
-Efficiently adjudicate disagreements and audit samples of apparently easy
-agreements to detect correlated model errors.
-
-### Inputs
-
-- Consensus classifications and source-linked provider annotations.
-- Immutable source screenshots.
-- A recorded random seed and sampling policy.
-
-### Outputs
-
-- Review artifact(s) supporting source viewing and side-by-side cell, row, and
-  column annotations.
-- Human selections/corrections, reviewer notes, timestamps, and status.
-- Deterministic samples of unanimous cells and unanimous documents.
-
-### Implementation tasks
-
-- [ ] Define review-record schema with stable review item IDs.
-- [ ] Include source image path/ID, crop or location metadata when available,
-  all provider raw annotations, and disagreement category.
-- [ ] Support review items for value cells, row paths/kinds/presence, column
-  paths/presence, and document-level structure conflicts.
-- [ ] Allow selecting a provider transcription or entering a corrected value,
-  path, row kind, or structural decision as appropriate to the review item.
-- [ ] Record reviewer identity, notes, timestamp, and validation status.
-- [ ] Support `unreviewed`, `verified`, `corrected`, and `rejected` statuses.
-- [ ] Generate deterministic random samples of unanimous cells and documents
-  using a stored seed, population hash, and sampling parameters.
-- [ ] Preserve review history; corrections append revisions rather than
-  overwriting original annotations.
-- [ ] Start with CSV/JSON plus image links unless usability evidence justifies a
-  richer tool.
-
-### Important design decisions
-
-- Agreement sampling is mandatory because models can make correlated errors.
-- Review state is a separate layer from provider and consensus artifacts.
-- A rejected item requires an explicit reason and does not silently disappear.
-- If crops are generated, their coordinates and source hash become provenance.
-
-### Tests and acceptance criteria
-
-- [ ] A reviewer can locate the source screenshot and see every provider value
-  or structural annotation for each disputed cell, row, or column.
-- [ ] Review edits preserve old state and all provenance.
-- [ ] The same seed and population produce the same audit sample.
-- [ ] Sample sizes and strata are validated and reported.
-- [ ] CSV/JSON exports round-trip without losing hierarchy or raw text.
-
-### Explicitly out of scope
-
-- A web UI unless separately requested.
-- Automatic LLM adjudication.
-- Accounting normalization or derived metrics.
-
-### Dependencies
-
-- Milestone 5; optional visual-location metadata may be added without changing
-  core cell identity.
-
-## Milestone 7 — Freeze visual golden dataset V1
-
-### Purpose
-
-Publish a reproducible, human-validated transcription benchmark with frozen
-inputs, contracts, provenance, structural truth, and cell-level truth.
-
-### Inputs
-
-- Immutable source image corpus and hashes.
-- Versioned prompts/schemas and provider annotations.
-- Deterministic consensus results and completed human adjudications/audits.
-
-### Outputs
-
-- Immutable source-image manifest with hashes.
-- Prompt/schema/comparison/classification versions.
-- Provider/model/run metadata and raw annotations.
-- Consensus and human-review artifacts.
-- Final statement metadata, row-manifest, column-manifest, and self-contained
-  cell-level visual gold tables.
-- Bundle metadata and integrity hashes.
-
-### Implementation tasks
-
-- [ ] Define the V1 bundle manifest and exact file formats/schemas.
-- [ ] Verify all 90 source hashes against the frozen source manifest.
-- [ ] Require complete provenance for every included annotation and decision.
-- [ ] Resolve or explicitly reject every required review item.
-- [ ] Include results of unanimous cell/document audits.
-- [ ] Export statement metadata, ordered rows, ordered columns, and
-  self-contained cells without semantic accounting concepts.
-- [ ] Hash primary and derived artifacts and record tool/package versions.
-- [ ] Implement no-overwrite publication and full offline integrity verification.
-- [ ] Document licensing/access constraints and reproducible rebuild steps.
-
-### Important design decisions
-
-- V1 is immutable. Corrections produce a new dataset version with change notes.
-- The final tables retain the visually reported raw labels, headers, values,
-  titles, units, standalone section headings, row kinds, and zero-based order.
-- Final cells retain hydrated `row_path_raw` and `column_path_raw` even though
-  the model-facing wire cells refer to row/column manifests by index.
-- Provider raw responses may require a restricted artifact tier, but their
-  hashes and provenance remain linked from the benchmark.
-- Publication must not depend on mutable absolute paths alone; manifests use
-  logical paths plus hashes while preserving original path provenance.
-
-### Tests and acceptance criteria
-
-- [ ] Offline verification confirms every declared file and hash.
-- [ ] Every final row, column, and cell traces to source, provider annotations,
-  consensus, and human decision/audit status.
-- [ ] Statement/row/column/cell counts, zero-based order, references, row kinds,
-  and hydrated path relationships pass schema checks.
-- [ ] A clean environment can load and validate the frozen benchmark.
-- [ ] No final field contains canonical concepts such as `revenue` or
-  `current_assets`.
-
-### Explicitly out of scope
-
-- Evaluating new candidate models (Milestone 8).
-- Canonical accounting facts (Milestone 9).
-- Ratios, growth, TTM, MRQ, valuation, or other features (Milestone 10).
-
-### Dependencies
-
-- Milestones 0–6 and completed review/audit policy thresholds.
-
-## Milestone 8 — Benchmark/evaluation runner
-
-### Purpose
-
-Evaluate any future vision model or prompt against frozen visual gold with
-deterministic, diagnostic metrics rather than a single opaque accuracy score.
-
-### Inputs
-
-- Frozen Milestone 7 visual gold bundle.
-- Candidate model annotations conforming to a recorded schema/prompt/run.
-- Versioned deterministic comparison and evaluation rules.
-
-### Outputs
-
-- Per-row, per-column, per-cell, and per-document error records.
-- Aggregate metrics with statement/form breakdowns.
-- Reproducible evaluation report linked to exact gold and candidate versions.
-
-### Implementation tasks
-
-- [ ] Validate candidate source hashes and schema compatibility before scoring.
-- [ ] Reuse/freeze comparison normalization appropriate to benchmark scoring.
-- [ ] Implement exact raw value accuracy.
-- [ ] Implement normalized comparison value accuracy.
-- [ ] Implement full-cell accuracy over the hydrated row path, column path, and
-  raw value.
-- [ ] Implement row recall/completeness, row-path accuracy, and row-kind
-  accuracy, including standalone section headings.
-- [ ] Implement column recall/completeness and column-path accuracy.
-- [ ] Implement ordered table-structure accuracy over row and column manifests.
-- [ ] Implement cell recall/completeness and hallucinated/extra-cell rate.
-- [ ] Implement document-perfect rate.
-- [ ] Break errors down by statement type and 10-K versus 10-Q.
-- [ ] Report denominators, missing documents, and invalid outputs explicitly.
-- [ ] Export machine-readable results alongside human-readable summaries.
-
-### Important design decisions
-
-- A candidate cannot receive credit by changing the frozen gold or comparison
-  policy during evaluation.
-- Row, column, path, row-kind, missing, extra, and value failures remain
-  distinguishable.
-- Metrics operate on raw visual transcription, not semantic accounting facts.
-- Evaluation randomness is avoided; any sampling/report bootstrap is separately
-  seeded and does not affect primary scores.
-
-### Tests and acceptance criteria
-
-- [ ] Perfect fixture annotations score 100% on all applicable metrics.
-- [ ] Controlled row, column, row-kind, path, value, blank, missing, and extra
-  mutations affect only expected metric dimensions.
-- [ ] Missing and extra cells have correct, reconciled denominators.
-- [ ] Missing and extra rows/columns have correct, reconciled denominators.
-- [ ] Aggregates exactly reconcile with structural, per-cell, and per-document
-  outputs.
-- [ ] Repeated evaluations are byte-identical given identical inputs.
-
-### Explicitly out of scope
-
-- Training models or optimizing prompts inside the evaluation runner.
-- Accounting concept accuracy and financial feature correctness.
-- LLM judging of output quality.
-
-### Dependencies
-
-- Milestone 7; reuse stable deterministic components from Milestones 4 and 5.
-
-## Milestone 9 — Future accounting-normalization benchmark
-
-### Purpose
-
-Transform visually transcribed reported cells into canonical financial facts in
-a separate downstream benchmark.
-
-### Inputs
-
-- Frozen visual gold cells and statement metadata.
-- A separately versioned accounting ontology and period/unit rules.
-- Independently reviewed canonical-fact annotations.
-
-### Outputs
-
-- Canonical facts such as `"Net sales" → revenue` and
-  `"Operating income" → operating_income`.
-- Explicit applicability/absence, period, unit, numeric, and semantic fields.
-- A benchmark isolated from the visual transcription ground truth.
-
-### Implementation tasks
-
-- [ ] Design the canonical accounting ontology and its version policy.
-- [ ] Define correct-absence and applicability semantics.
-- [ ] Parse numeric displays without mutating visual raw values.
-- [ ] Normalize units and periods with explicit evidence and rules.
-- [ ] Map reported rows to canonical concepts with registrant/statement context.
-- [ ] Establish separate annotation, review, freeze, and evaluation workflows.
-
-### Important design decisions
-
-- This stage consumes the visual dataset but never rewrites it.
-- Canonical mapping, missing attributes, period inference, unit conversion, and
-  numeric parsing belong here—not in visual extraction or comparison.
-- Ambiguity and not-applicable states must be first-class reviewed outcomes.
-
-### Tests and acceptance criteria
-
-- [ ] Canonical facts trace back to exact frozen visual cells.
-- [ ] Visual raw fields remain unchanged and independently loadable.
-- [ ] Accounting-specific rules and edge cases have expert-reviewed fixtures.
-- [ ] Evaluation distinguishes transcription errors from normalization errors.
-
-### Explicitly out of scope
-
-- This entire milestone is out of scope for the current visual extraction
-  implementation.
-- Financial ratio and feature calculation remains Milestone 10.
-
-### Dependencies
-
-- A frozen visual dataset from Milestone 7; its implementation should be
-  planned as a separate project stage.
-
-## Milestone 10 — Future deterministic financial feature generation
-
-### Purpose
-
-Compute reproducible financial features from canonical facts, using explicit
-deterministic formulas rather than asking an LLM to calculate them.
-
-### Inputs
-
-- Reviewed canonical facts from Milestone 9.
-- Versioned formula definitions, period-selection rules, and external market
-  data where valuation metrics require it.
-
-### Outputs
-
-- Deterministically calculated features with complete input provenance.
-- Examples include current ratio, quick ratio, gross/operating margin, ROA,
-  ROE, free cash flow, debt/equity, YoY growth, TTM, MRQ, and valuation ratios.
-
-### Implementation tasks
-
-- [ ] Specify formulas, acceptable source concepts, units, and period rules.
-- [ ] Define missing-input, divide-by-zero, restatement, and sign behavior.
-- [ ] Build deterministic calculation functions with input lineage.
-- [ ] Version and snapshot any required external market data.
-- [ ] Test formulas against hand-calculated expert fixtures.
-- [ ] Separate extraction/normalization quality from calculation quality in
-  evaluation reports.
-
-### Important design decisions
-
-- Calculations are code-driven and deterministic by default.
-- TTM, MRQ, quarterly derivation, and YoY calculations never leak upstream into
-  the visual transcription contract.
-- Every output cites its canonical inputs, formula version, and market-data
-  snapshot where applicable.
-
-### Tests and acceptance criteria
-
-- [ ] Formula fixtures cover normal and edge cases with exact expected outputs.
-- [ ] Repeated calculations with identical inputs are identical.
-- [ ] Missing or incompatible inputs produce explicit statuses, not guesses.
-- [ ] Every feature has complete lineage to canonical and visual evidence.
-
-### Explicitly out of scope
-
-- This entire milestone is out of scope for the current project phase.
-- LLM-generated arithmetic or implicit formulas.
-- Modifying the frozen visual or accounting-normalization benchmarks.
-
-### Dependencies
-
-- Milestone 9 canonical facts and separately governed external-data inputs.
-
-## Recommended next session
-
-Implement **Milestone 2 — OpenAI extraction adapter and pilot runner** only.
-Begin with mocked transport, immutable artifact persistence, selectors,
-dry-run, retry, and resume behavior before making any opt-in pilot API calls.
+Initially it contains 13 filing packages, 27 HTML documents, and 34 observations
+(25 reported and 9 adjusted). Forms: eight 8-Ks, two 6-Ks, two 10-Qs, one 10-K.
+Counts are an initial reference, not constants: edits can add/delete observations.
+The previous screenshot pipeline has been removed without an archive. Step 1 is
+complete: dataset validation/models, the read-only Streamlit shell, launch script,
+`review` dependency extra and offline tests exist. The core dependency is
+`jsonschema`. The screen provides plain text previews and saved filing-wide labels;
+formatted viewing, editing, persistence and confirmation remain future steps.
+
+## Cleanup baseline
+
+The user explicitly requested removal without preserving the old work. Cleanup
+removed `golden_dataset/`, its tests and fixtures, frozen resources, provider
+adapters, the extraction console command, provider extras, unused dependencies,
+obsolete environment examples, and stale build artifacts. The namespace
+`finbot_filing_evals`, version 0.1.0, src-layout packaging, pytest dev extra and
+empty `tests/` directory remain. Shared datasets were not changed.
+
+Cleanup handoff (2026-10-21 UTC): complete. Source/config/docs updated and the
+repo-local Python 3.14 environment rebuilt. Editable install, compileall, package
+import/version and wheel-content checks passed; the old CLI and runtime/provider
+dependencies are absent. Pytest collected no tests (exit 5), as expected after
+removing the old suite. Shared dataset integrity was verified unchanged. Next
+implementation work is Step 1. Do not recreate the deleted screenshot code.
+
+## How to execute and hand off a step
+
+1. Read README.md, this roadmap, applicable AGENTS.md instructions, and git
+   status. Preserve unrelated existing changes, including untracked files.
+2. Work on the first incomplete step after all its prerequisites are complete.
+   Mark it in progress. Implement only that step unless the user requests more.
+3. Inspect predecessor code/tests and use the contracts below. If a predecessor
+   is incomplete, report the concrete gap rather than silently implementing later
+   features. Resolve routine implementation details without reopening agreed scope.
+4. Add focused tests with the step. Run its acceptance checks and the full package
+   checks in README.md. All new write tests use temporary datasets and fake clocks.
+5. Mark a step complete only when every acceptance item passes. Update README.md
+   with commands/features that now actually work, and replace that step's handoff
+   line with date, changed files, checks/results, and remaining limitations.
+6. Leave unfinished checkboxes unchecked and record the exact next action. A
+   handoff must not rely on a conversation, an agent's memory, or a `/tmp` script.
+
+| Step | Deliverable | Prerequisite | Status |
+| --- | --- | --- | --- |
+| 1 | Dataset foundation and read-only app shell | Existing draft dataset | Complete |
+| 2 | Document viewer | Step 1 | Pending |
+| 3 | Editable labels and validation | Step 2 | Pending |
+| 4 | Durable saves and synchronized exports | Step 3 | Pending |
+| 5 | Confirmation and guarded navigation | Step 4 | Pending |
+| 6 | Progress and catalog refresh | Step 5 | Pending |
+| 7 | End-to-end verification and operating docs | Step 6 | Pending |
+
+Tests belong in every step; Step 7 integrates and exercises the completed flow.
+Until Step 4, the app must not write to the dataset. Confirmation stays disabled
+until Step 5. Early steps should show their current capabilities honestly.
+
+## Agreed dataset and label contract
+
+### Files and ownership
+
+- `dataset.json` lists case paths in navigation order, schema version
+  `earnings_eps.v1`, policy, counts, and dataset review state.
+- `cases/<case_id>/case.json` is authoritative for that filing's labels and
+  review state. Its keys are `case_id`, `filing`, `documents`, `labels`, `review`.
+- `filing` holds upstream identity/context, including ticker, form, filing ID,
+  snapshot ID, primary artifact ID, and the complete selected `artifacts` list.
+- `documents` maps each artifact ID to `path` and `sha256`. Paths are relative
+  to the dataset root, not the case directory. Every selected artifact is present.
+- Original HTML is in `cases/<case_id>/documents/`. Per-case `provenance.json`
+  and `filing-ready.json` preserve acquisition history. Nine original event
+  manifests were reconstructed upstream; four additions retain saved events.
+- Optional `review-text/` files are display aids, not authoritative documents.
+- `labels.schema.json` defines the label payload. `labels.json`, `labels.parquet`,
+  `labels.metadata.json`, and `REVIEW.md` are derived label/review exports.
+  The flat `labels.json` list and Parquet rows have the same fields and values;
+  they are not shaped like the two-array `case.labels` object.
+- `documents.parquet` and `documents.metadata.json` describe the source files.
+  `source-inventory.json` and `source-records.json` are acquisition snapshots.
+- `integrity.json` records SHA-256 and byte size for bundle files other than
+  itself. Initial hashes already exist; label edits require refreshed hashes.
+- The older source sample under `data/earnings/evaluations/corpora/golden-s3-v1`
+  belongs to a separate workflow. This app reads/writes the new `filing-evals`
+  bundle only; it does not synchronize edits back to that older sample.
+
+### Extraction targets
+
+`case.labels` has exactly two arrays: `reported_diluted_eps` and
+`adjusted_diluted_eps`. Each observation has exactly these fields:
+
+```json
+{
+  "value": "4.60",
+  "currency": "USD",
+  "period": "Q3 2026",
+  "period_start": "2026-07-01",
+  "period_end": "2026-09-30"
+}
+```
+
+- Keep values as signed decimal strings, including trailing zeroes. The current
+  schema requires a decimal point; validate with Decimal, never a float round trip.
+- Currency is three uppercase letters. Preserve reported currencies without
+  conversion. Period is a nonblank descriptive label; do not infer dates from it.
+- Dates are ISO `YYYY-MM-DD`. `period_start` may be null; `period_end` is required.
+  When both are present, start must not follow end. Blank start inputs map to null.
+- An empty array means no qualifying figure was identified, never zero. Do not
+  create placeholder observations. Dedupe repeated values across attachments.
+- Reject duplicate observations within a metric/currency/known date interval,
+  even if their period labels differ. For null starts, use normalized period
+  label plus end date so quarterly and cumulative observations stay distinct.
+- Scope is the latest reported quarter and current fiscal year-to-date results,
+  or the latest fiscal year for a 10-K. Exclude historical comparison quarters/
+  years, guidance, basic EPS, adjustment components, and calculated EPS.
+- Use the primary explicitly reported adjusted figure; exclude operational or
+  constant-currency variants. Reported EPS accommodates foreign reporting standards.
+- No share-unit, accounting-basis, evidence, or extra financial metrics belong
+  in extraction targets. Preserve source provenance and separate review notes.
+
+Known review questions must remain visible, not be silently resolved in code:
+JNJ ends September 27, 2026 and has four null start dates; ASML/DPZ start-date
+interpretations need review; TSM has TWD 29.43 and USD 4.60, with the USD amount
+presented per ADR; JNJ operationally adjusted figures are excluded. These are
+annotation questions, not permission to fetch more documents or alter labels.
+
+### Review and save semantics
+
+- Existing cases start with `review.status = "unreviewed"` and `review.notes`
+  as a list of strings. Preserve notes; show them separately from editable labels.
+- Add nullable `review.reviewed_at_utc` when review persistence is implemented;
+  it is absent in initial files and readers must tolerate that. A confirmed case
+  has status `human_reviewed` and an explicit UTC confirmation timestamp.
+- Save changes persists valid labels without confirming an unreviewed case.
+  Changing labels of a confirmed case resets status to unreviewed and clears its
+  confirmation timestamp. A no-op save preserves existing confirmation.
+- Confirm and next validates/saves the current labels, sets human_reviewed and
+  the confirmation timestamp, then moves to the next case in manifest order.
+  At the last case, stay on the case and show completion. Empty arrays are valid.
+- Null start dates are permitted by the agreed schema. Highlight them and let
+  the reviewer retain them; never force an invented date to enable confirmation.
+- Dataset review_status is unreviewed when none are confirmed, in_progress when
+  some are confirmed, and human_reviewed when all are confirmed. Only the last
+  state sets human_reviewed true and label_source human_reviewed. Otherwise the
+  dataset remains agent_draft. All counts are derived from current cases.
+- Label sidecar metadata follows the dataset's review state; its `partial` flag
+  stays true until all cases are confirmed. Source-document metadata is about
+  acquisition, not the authority for label review state.
+- Confirming a filing means checking the entire selected package, including
+  completeness and absent metrics; it does not require adding per-value evidence.
+
+## Implementation layout and launch contract
+
+New code belongs in `src/finbot_filing_evals/review/`. Modules below define
+ownership; adjust names only if the README/roadmap handoff is updated to match
+actual files.
+
+Use `scripts/review_eps.py` as the thin Streamlit entry point. The optional
+`review` extra installs Streamlit, pandas and PyArrow; add HTML display tooling
+when Step 2 needs it. The core loader uses `jsonschema`; keep the pytest dev
+extra. Keep persistence/export code independent of Streamlit so it can be tested
+without a running server.
+
+Working commands (run from this repository root; currently read-only):
+
+```bash
+.venv/bin/python -m pip install -e '.[dev,review]'
+export FINBOT_DATA_ROOT=/Users/ilan/workspace/finbot/data
+.venv/bin/python -m streamlit run scripts/review_eps.py --server.address 127.0.0.1
+# Explicit dataset override, including a disposable local copy:
+.venv/bin/python -m streamlit run scripts/review_eps.py --server.address 127.0.0.1 -- --dataset-root /path/to/copy
+```
+
+Explicit `--dataset-root` takes precedence over FINBOT_DATA_ROOT. Without an
+explicit path, require FINBOT_DATA_ROOT and append `filing-evals/golden/earnings-eps-v1`.
+Do not load `.env`, create an empty dataset, or choose another corpus silently.
+No AWS credentials, provider SDKs, external requests, or sibling package imports
+are needed. Use the repo's own environment; verify its interpreter exists and is
+Python >=3.12. A broken/stale virtualenv is an environment issue to fix locally,
+not a reason to borrow another package's environment or rewrite dependencies.
+
+## Step 1 — Dataset foundation and read-only app shell
+
+Prerequisite: existing draft bundle or synthetic temporary fixtures matching the
+contract above. No earlier UI code is assumed.
+
+Deliver `review/config.py`, `dataset.py`, the thin app/launch script, optional
+review dependencies, and the first dataset fixtures/tests. Add a maintained
+document label schema as needed; no previous schema loader or validator remains.
+
+- [x] Resolve the dataset path and load manifest/cases in listed order.
+- [x] Validate schema version, nonempty/unique case membership, case identities,
+  label shape, complete document membership, source hashes/sizes, and paths
+  confined to the dataset root,
+  including symlinks. Missing/bad input produces an actionable app error.
+- [x] Establish dataset/case models and a per-case disk fingerprint for later
+  stale-edit detection. Preserve unknown upstream metadata when round-tripping.
+- [x] Show a wide two-pane shell, filing/attachment selectors, filing-level
+  values, notes, and saved review status. Use plain text/filename preview until
+  Step 2; do not render active filing HTML or offer write controls yet.
+- [x] Add README setup/launch instructions marked as read-only at this stage.
+
+Acceptance: temporary fixtures load without credentials or network; malformed
+paths, unsupported versions and changed source bytes fail clearly; empty metrics
+and null starts survive loading; new tests and scaffold checks pass. If the real
+bundle is available, read-only smoke inspection finds the initial 13/27/34 baseline
+without requiring it in normal tests. Run the documented launch command successfully.
+
+Handoff (2026-10-20): complete. Implementation:
+
+- `review/config.py`: explicit `--dataset-root` precedence and environment fallback;
+  no dotenv, directory creation or corpus substitution.
+- `review/dataset.py`: `load_dataset(root)`, immutable public models, ordered cases,
+  complete artifact/hash/size/path checks, and canonical upstream snapshot checks.
+  `ReviewCase.fingerprint` / `ReviewDataset.fingerprint` hash exact file bytes;
+  `to_dict()` preserves unknown metadata in an independent copy. Source access
+  through `SourceDocument.read_bytes()` revalidates confinement and content.
+- `review/validation.py`, `errors.py`, `schemas/earnings_eps_v1.schema.json`:
+  packaged label schema and `validate_labels(labels, location=...)`; schema, date,
+  duplicate and loading failures use `ReviewError`. The local dataset schema must
+  match the packaged contract; untrusted schema references are never resolved.
+- `review/app.py`, `scripts/review_eps.py`: wide read-only shell with dataset/case
+  namespaced selectors, saved labels, status and notes. `plain_text_preview(raw)`
+  strips markup/scripts/styles and is rendered with `st.code`, never active HTML.
+- `tests/conftest.py` and `test_review_{config,dataset,validation,app}.py`: synthetic
+  temporary bundles, network guard, malformed input/source tests, precision/null
+  preservation, metadata round trips and Streamlit AppTest navigation checks.
+
+Checks: editable `.[dev,review]` installation; compileall; 81 passing tests;
+wheel build with packaged schema/import verification. Read-only real-bundle smoke
+loaded 13 filings / 27 documents / 34 observations and extracted preview text from
+all originals. Real bundle integrity hashes/sizes remained unchanged. AppTest
+visited every filing on a disposable copy without changing any file. The launch
+command above started on localhost (QA used port 8511, headless mode, usage stats
+disabled and an explicit temporary dataset copy). Browser automation was unavailable
+in this session, so no visual browser inspection is claimed.
+
+Next action: Step 2, `review/viewer.py`, using `ReviewCase.documents` and source
+metadata. The shell currently defaults to the first manifest attachment; Step 2
+must prefer EX-99.1 and retain attachment selection. Formatted viewing/downloads,
+editing, saving, confirmation and catalog refresh are not implemented. The loader
+reads authoritative manifest/cases/schema/documents; validating/synchronizing all
+derived exports and `integrity.json` during saves belongs to Step 4.
+
+## Step 2 — Document viewer
+
+Prerequisite: Step 1 loader and app shell. Deliver `review/viewer.py` and viewer
+checks; use the loader's source paths and artifact metadata.
+
+- [ ] Render the selected original HTML in an isolated display-only viewer,
+  preserving tables and useful inline formatting without changing source bytes.
+- [ ] Prevent filing scripts and external asset/network loads from executing.
+  Do not pass raw SEC HTML into an embedding mode that executes it by default.
+- [ ] Keep filing-wide labels visible while switching attachments; do not imply
+  every value appears in whichever attachment is currently selected.
+- [ ] Offer readable text fallback and original-file download. Upstream selection
+  omitted images/stylesheets: missing assets must not trigger downloads or hide
+  accessible text. Do not promise pixel-identical rendering.
+- [ ] Use EX-99.1 as the initial attachment when available, otherwise the first
+  manifest artifact; preserve a user's selected attachment within the filing.
+
+Acceptance: representative synthetic nested tables and script-containing HTML
+render without executing scripts or contacting external services; text fallback
+works when no precomputed review text exists. Manually inspect ASML and TSM
+releases plus CMC/RTX/GM long reports if the sample is available. Source hashes
+remain unchanged. App remains read-only.
+
+Handoff: Pending. Record viewer approach, tested layouts, and limitations.
+
+## Step 3 — Editable labels and validation
+
+Prerequisite: Step 2 working viewer. Deliver `review/editor.py`, validation and
+session-state helpers, and focused tests; no disk writes yet.
+
+- [ ] Present one dynamic table: EPS type, value, currency, period, start/end.
+  Convert to/from the two arrays without adding UI fields to saved observations.
+- [ ] Support additions, deletions, empty arrays and an initially empty table.
+  Treat an entirely blank new row as unused; reject partially populated rows.
+- [ ] Preserve decimal strings/negative signs/trailing zeroes and null starts.
+  Apply the contract's schema, calendar-date, ordering and duplicate checks.
+- [ ] Show row-specific errors and distinguish unsaved changes from saved values.
+  Render current annotation notes and highlight missing dates without filling them.
+- [ ] Keep pending edits through reruns and attachment switches. Until Step 5
+  provides the full navigation guard, prevent a filing change from losing edits
+  by requiring explicit discard. Clearly label edits as unsaved; no working Save
+  or Confirm button is claimed before their implementation steps.
+
+Acceptance: round trips preserve 4.60, negative EPS, two currencies, quarter/YTD
+pairs sharing an end date, and unknown dates; bad dates/duplicates/partial rows
+report useful errors. Adding/deleting the final row preserves the right empty
+array. Disk files remain unchanged, and UI smoke tests retain attachment edits.
+
+Handoff: Pending. Record editor state keys, validation interfaces, and checks.
+
+## Step 4 — Durable saves and synchronized exports
+
+Prerequisite: Step 3 validated editor output. Deliver `review/persistence.py` and
+`exports.py`, wire Save changes, and test failure/recovery paths.
+
+- [ ] Serialize writes with a dataset-level local writer lock; inside the lock
+  compare the case's current fingerprint with the opened version. A conflict
+  preserves pending edits and refuses to overwrite the external change.
+- [ ] Revalidate source integrity and proposed labels, back up the prior case,
+  and atomically replace case.json. Preserve filing/documents/provenance fields.
+  Implement the agreed invalidation/no-op semantics for previously reviewed cases.
+- [ ] From authoritative case files, rebuild labels.json/Parquet, label metadata,
+  observation/review counts and state in dataset.json, and REVIEW.md. Maintain
+  original creation time and acquisition facts; update modification metadata.
+- [ ] Refresh integrity.json last. Verify source manifests/hashes, but do not
+  rewrite source documents, provenance, acquisition snapshots or label schema.
+  Label exports retain case_id, ticker, filing_id, form_type, metric, the five
+  observation fields, and review_status; reviewed/unreviewed rows remain distinct.
+  Preserve values and dates as strings (nullable start dates), matching the
+  initial flat export schema. Do not introduce floating-point EPS columns.
+- [ ] Keep backups, writer lock and recovery state under `.review/`, excluded
+  explicitly from current-bundle integrity hashing. Make a durable pending marker
+  before committing a case, recording its expected replacement fingerprint.
+- [ ] Stage/validate derived files before replacement where possible. Individual
+  atomic writes are not a multi-file transaction: an interrupted save must be
+  recognized as synchronization pending, not a healthy complete save.
+- [ ] Retry/recover from authoritative cases under the writer lock; accept an
+  interrupted case change only when it matches the pending marker. Unexpected
+  integrity mismatches still fail. Clear the marker only after all exports/hashes
+  agree. Distinguish “labels saved, exports need retry” from “nothing saved.”
+
+Acceptance: save/reopen preserves edits and notes; source bytes are unchanged;
+JSON/Parquet/manifest/review counts agree; backup exists; stale second sessions
+cannot overwrite; injected failures before/after the case commit and during an
+export are recoverable after restart without losing labels or claiming success.
+Do not test this writer on the real review dataset. Catalog wiring waits for 6.
+
+Handoff: Pending. Record on-disk recovery format, save/export APIs, and fault tests.
+
+## Step 5 — Confirmation and guarded navigation
+
+Prerequisite: Step 4 save/export service. Deliver confirmation/navigation in the
+app and session-state helpers, using that same persistence path.
+
+- [ ] Implement Save changes and Confirm and next with distinct review semantics.
+  Confirmation timestamps come from an injectable UTC clock, not UI-supplied dates.
+- [ ] Add previous/next and direct filing selection in manifest order. Only move
+  after a successful requested save/confirmation; pending recovery keeps the user
+  on the current case. Last-case confirmation shows completion without wrapping.
+- [ ] When leaving with edits, offer Save, Discard or Stay. Discard restores the
+  last saved case and clears its stale editor widget state. Attachment switching
+  preserves pending labels and requires no extra confirmation.
+- [ ] Restore saved labels/status on restart and prevent state leaking between
+  filings or dataset paths. Session-only editing never counts as a durable review.
+- [ ] Allow confirmation of valid empty arrays or explicitly retained null starts;
+  keep their meaning and current review notes visible.
+
+Acceptance: complete Save/Confirm flows persist different states; a failed save
+never advances; Save of changed reviewed labels invalidates confirmation; a no-op
+save preserves it. Save/Discard/Stay and last-case navigation behave correctly;
+restart restores saved state. Use temporary data and deterministic timestamps.
+
+Handoff: Pending. Record navigation/state behavior and confirmation checks.
+
+## Step 6 — Progress and catalog refresh
+
+Prerequisite: Step 5 complete persisted review flow. Deliver progress UI and a
+small catalog-command adapter; dataset aggregate/export semantics already exist
+from Step 4 and must not be deferred until here.
+
+- [ ] Show saved reviewed/unreviewed counts, filing statuses and overall state;
+  derive them from cases rather than initial constants or unsaved session flags.
+- [ ] Verify aggregate flags and per-row export states for no/some/all reviewed
+  cases, including reverting a previously complete dataset after a label edit.
+- [ ] After successful synchronized saves to the canonical shared dataset, invoke
+  the sibling finbot-catalog CLI as a subprocess argument list, not a shell string
+  or sibling Python import. Default to its repo-local interpreter and
+  `scripts/build_catalog.py --data-root <FINBOT_DATA_ROOT>`; allow a documented
+  `--catalog-repo` override. No catalog source changes are required.
+- [ ] Disable automatic catalog refresh for explicit noncanonical dataset copies,
+  including temporary fixtures. Missing/broken catalog tooling or a failed refresh
+  must not undo saved labels or hide the failure; show catalog refresh pending and
+  let the user retry. Do not claim catalog freshness before success.
+
+Acceptance: progress survives restart and label edits; all-reviewed flags are
+accurate; catalog adapter has mocked success/failure tests and never runs in normal
+UI/unit tests. Temporary-copy use performs no shared catalog writes. Confirm the
+real catalog integration only after an explicitly requested real review save.
+
+Handoff: Pending. Record CLI configuration, retry behavior and progress checks.
+
+## Step 7 — End-to-end verification and operating docs
+
+Prerequisite: Steps 1–6 complete, with tests and handoffs already recorded.
+
+- [ ] Exercise a disposable dataset copy in a real browser: view attachments,
+  edit/add/delete observations, Save, Confirm, navigate, restart, and check outputs.
+  Include empty adjusted EPS, JNJ null starts, TSM two currencies and a long report.
+- [ ] Verify source hashes remain unchanged, decimals survive, review state is
+  accurate, exports/integrity agree, and stale-write/recovery scenarios still work.
+- [ ] Run compileall, the full package test suite, and the review UI tests with
+  the repo-local environment. New tests must not require the shared dataset.
+- [ ] Finalize README setup, launch, dataset override, review meanings, backup/
+  recovery and catalog troubleshooting. Document known HTML limitations and the
+  working document-review commands without restoring removed legacy workflows.
+- [ ] Record validation evidence and remaining limitations in this roadmap; mark
+  complete only when the user can perform the entire review without editing JSON.
+
+Acceptance: the documented launch works from a clean repo-local installation;
+the temporary-copy browser workflow and all package checks pass; saved labels,
+review progress, exports and integrity agree after restart. No real review data
+was changed during QA, and the handoff identifies any remaining display limits.
+
+Handoff: Pending. Record full commands/results, browser checks and remaining work.
+
+## Boundaries for every step
+
+Keep all implementation in this repository and all generated data outside Git.
+The app is a local single-user workflow, with stale-session protection; do not add
+a hosted service, authentication, a database, model inference, AWS operations,
+new downloads, analyst expectations or automatic EPS calculations. Do not expand
+the schema with the fields intentionally omitted above. No cross-repo imports or
+changes to the read-only finbot-dashboard are part of this roadmap. Tests write
+only temporary fixtures; browser QA also uses copies. Preserve unrelated working
+changes and the original draft/source data throughout implementation.

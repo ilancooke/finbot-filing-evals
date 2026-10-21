@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Reported and adjusted diluted EPS observations V1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "reported_diluted_eps",
+    "adjusted_diluted_eps"
+  ],
+  "properties": {
+    "reported_diluted_eps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "value",
+          "currency",
+          "period",
+          "period_start",
+          "period_end"
+        ],
+        "properties": {
+          "value": {
+            "type": "string",
+            "pattern": "^-?\\d+\\.\\d+$"
+          },
+          "currency": {
+            "type": "string",
+            "pattern": "^[A-Z]{3}$"
+          },
+          "period": {
+            "type": "string",
+            "minLength": 1
+          },
+          "period_start": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          },
+          "period_end": {
+            "type": "string",
+            "format": "date"
+          }
+        }
+      }
+    },
+    "adjusted_diluted_eps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "value",
+          "currency",
+          "period",
+          "period_start",
+          "period_end"
+        ],
+        "properties": {
+          "value": {
+            "type": "string",
+            "pattern": "^-?\\d+\\.\\d+$"
+          },
+          "currency": {
+            "type": "string",
+            "pattern": "^[A-Z]{3}$"
+          },
+          "period": {
+            "type": "string",
+            "minLength": 1
+          },
+          "period_start": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          },
+          "period_end": {
+            "type": "string",
+            "format": "date"
+          }
+        }
+      }
+    }
+  }
+}

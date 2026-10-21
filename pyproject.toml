@@ -5,20 +5,20 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "finbot-filing-evals"
 version = "0.1.0"
-description = "Reproducible benchmarks for extracting tables from SEC filing screenshots"
+description = "Golden datasets and evaluation tools for earnings extraction from SEC documents"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = ["jsonschema>=4.23,<5"]
 
 [project.optional-dependencies]
 dev = ["pytest>=8,<10"]
+review = ["streamlit>=1.50,<2", "pandas>=2.2,<4", "pyarrow>=19"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
 
 [tool.setuptools.package-data]
-"finbot_filing_evals.golden_dataset.prompts" = ["*.txt"]
-"finbot_filing_evals.golden_dataset.schemas" = ["*.json"]
+"finbot_filing_evals.review" = ["schemas/*.json"]
 
 [tool.pytest.ini_options]
 addopts = "-ra"
