@@ -7,12 +7,21 @@ from .config import parse_dataset_root
 from .dataset import ReviewDataset, load_dataset
 from .editor import COLUMNS, METRIC_NAMES, validate_rows
 from .errors import ReviewError
-from .persistence import save_changes, retry_synchronization, synchronization_pending
-from .session import EditorDraft
+from .persistence import confirm_case, save_changes, retry_synchronization, synchronization_pending
+from .session import EditorDraft, NavigationGuard, adjacent_case
 from .viewer import initial_attachment, plain_text_preview, viewer_frame
 
 
-def _change_filing(namespace: str) -> None:
+def _navigation(namespace: str) -> NavigationGuard:
+    import streamlit as st
+
+    key = f"{namespace}:navigation"
+    if key not in st.session_state:
+        st.session_state[key] = NavigationGuard()
+    return st.session_state[key]
+
+
+def _request_filing(namespace: str, target: str, root=None) -> None:
     import streamlit as st
 
     active_key = f"{namespace}:active_filing"
@@ -22,11 +31,67 @@ def _change_filing(namespace: str) -> None:
         editor_key = f"{namespace}:{active}:editor:{draft.generation}"
         if editor_key in st.session_state:
             draft.capture_widget_changes(st.session_state[editor_key])
-    # Also guard delayed selector events arriving after a table edit.
-    if st.session_state.get(f"{namespace}:pending", False) or (draft is not None and draft.dirty):
-        st.session_state[f"{namespace}:filing"] = active
-    else:
-        st.session_state[active_key] = st.session_state[f"{namespace}:filing"]
+    # Capture edits arriving in the same event as a selection or navigation click.
+    try:
+        pending = synchronization_pending(root) if root is not None else st.session_state.get(f"{namespace}:pending", False)
+        selected = _navigation(namespace).request(
+            active, target, dirty=draft is not None and draft.dirty, pending=pending,
+        )
+    except ReviewError as error:
+        st.session_state[f"{namespace}:save_error"] = str(error)
+        selected = active
+    st.session_state[active_key] = selected
+    st.session_state[f"{namespace}:filing"] = selected
+
+
+def _change_filing(namespace: str, root=None) -> None:
+    import streamlit as st
+
+    _request_filing(namespace, st.session_state[f"{namespace}:filing"], root)
+
+
+def _discard(namespace: str, root, case_id: str, target: str | None = None) -> None:
+    import streamlit as st
+
+    try:
+        if synchronization_pending(root):
+            raise ReviewError("Synchronization pending. Retry before discarding or navigating.")
+        # Read at click time, including saves made by another session.
+        current = next(case for case in load_dataset(root).cases if case.case_id == case_id)
+        st.session_state[f"{namespace}:{case_id}:draft"].accept_saved(
+            current.to_dict()["labels"], current.fingerprint,
+        )
+        _navigation(namespace).stay()
+        if target is not None:
+            st.session_state[f"{namespace}:active_filing"] = target
+    except ReviewError as error:
+        st.session_state[f"{namespace}:save_error"] = str(error)
+
+
+def _persist(dataset, case, draft, labels, namespace, *, confirm=False, target=None) -> None:
+    import streamlit as st
+
+    try:
+        action = confirm_case if confirm else save_changes
+        saved = action(dataset.root, case.case_id, draft.opened_fingerprint, labels)
+        current = next(item for item in saved.dataset.cases if item.case_id == case.case_id)
+        draft.accept_saved(current.to_dict()["labels"], current.fingerprint)
+        if confirm:
+            notice = "Filing confirmed and exports synchronized."
+            if target is None:
+                notice += " End of filing list — review of the last filing is complete."
+        else:
+            notice = "Labels saved and exports synchronized. Saved review status: " + current.review_status.replace('_', ' ') + "."
+        st.session_state[f"{namespace}:save_notice"] = notice
+        _navigation(namespace).stay()
+        if target is not None:
+            st.session_state[f"{namespace}:active_filing"] = target
+        st.rerun()
+    except ReviewError as error:
+        st.error(str(error))
+        if synchronization_pending(dataset.root):
+            st.session_state[f"{namespace}:save_error"] = str(error)
+            st.rerun()
 
 
 def _show_dataset(dataset: ReviewDataset, *, pending: bool = False) -> None:
@@ -44,14 +109,25 @@ def _show_dataset(dataset: ReviewDataset, *, pending: bool = False) -> None:
     if st.session_state.get(active_key) not in cases:
         st.session_state[active_key] = next(iter(cases))
     case = cases[st.session_state[active_key]]
+    # A successful button action may have moved the active case on the prior run.
+    # Set the selector before instantiating its widget, never afterward.
+    st.session_state[f"{namespace}:filing"] = case.case_id
+    navigation = _navigation(namespace)
     draft_key = f"{namespace}:{case.case_id}:draft"
     if draft_key not in st.session_state:
         st.session_state[draft_key] = EditorDraft(case.to_dict()["labels"], case.fingerprint)
     draft = st.session_state[draft_key]
     if not draft.dirty and draft.opened_fingerprint != case.fingerprint:
         draft.accept_saved(case.to_dict()["labels"], case.fingerprint)
+    editor_key = f"{namespace}:{case.case_id}:editor:{draft.generation}"
+    if draft.dirty and editor_key not in st.session_state:
+        # Switching dataset paths can remove hidden widgets. Keep the independent
+        # draft, including partial rows, rather than replacing it with saved input.
+        draft.resume()
     st.subheader(f"{case.ticker} · {case.form_type}")
     st.caption(f"{case.filing_id} · Saved review status: {case.review_status.replace('_', ' ').title()}")
+    if case.to_dict()['review'].get('reviewed_at_utc'):
+        st.caption(f"Confirmed at (UTC): {case.to_dict()['review']['reviewed_at_utc']}")
     left, right = st.columns([3, 2])
     with left:
         st.subheader("Document")
@@ -122,7 +198,7 @@ def _show_dataset(dataset: ReviewDataset, *, pending: bool = False) -> None:
         draft.rows = edited.to_dict("records")  # nullable string dtype exports blanks as None
         result = validate_rows(draft.rows)
         if draft.dirty:
-            st.warning("Unsaved changes — Save changes or Discard changes before switching filings.")
+            st.warning("Unsaved changes — leaving this filing will offer Save, Discard or Stay.")
         else:
             st.caption("No unsaved changes. Table values match the saved labels.")
         if draft.opened_fingerprint != case.fingerprint:
@@ -141,20 +217,19 @@ def _show_dataset(dataset: ReviewDataset, *, pending: bool = False) -> None:
             st.subheader("Review notes")
             for note in case.notes:
                 st.text(note)
-    # Render after reading the editor so the selector is disabled in the very
-    # same response that first shows unsaved changes, including invalid rows.
+    # Callbacks capture editor deltas before resolving navigation requests.
     st.sidebar.selectbox(
         "Filing", options=list(cases), index=list(cases).index(case.case_id),
-        key=f"{namespace}:filing", disabled=draft.dirty or pending,
-        on_change=_change_filing, args=(namespace,),
+        key=f"{namespace}:filing", disabled=pending,
+        on_change=_change_filing, args=(namespace, dataset.root),
         format_func=lambda key: (
             f"{cases[key].ticker} · {cases[key].form_type} · "
             f"{cases[key].review_status.replace('_', ' ').title()} · {cases[key].filing_id}"
         ),
     )
     st.sidebar.button(
-        "Discard changes", disabled=not draft.dirty,
-        on_click=draft.accept_saved, args=(case.to_dict()["labels"], case.fingerprint),
+        "Discard changes", disabled=pending or not draft.dirty,
+        on_click=_discard, args=(namespace, dataset.root, case.case_id),
         key=f"{namespace}:{case.case_id}:discard",
         help="Restore the current saved labels and clear pending editor changes.",
     )
@@ -163,21 +238,34 @@ def _show_dataset(dataset: ReviewDataset, *, pending: bool = False) -> None:
         key=f"{namespace}:{case.case_id}:save",
         help="Save valid corrections without confirming the filing.",
     ):
-        try:
-            saved = save_changes(dataset.root, case.case_id, draft.opened_fingerprint, result.labels)
-            current = next(item for item in saved.dataset.cases if item.case_id == case.case_id)
-            draft.accept_saved(current.to_dict()["labels"], current.fingerprint)
-            st.session_state[f"{namespace}:save_notice"] = "Labels saved and exports synchronized. Filing remains unreviewed."
-            st.rerun()
-        except ReviewError as error:
-            st.error(str(error))
-            # Re-render immediately after partial commits so navigation is locked
-            # and stale aggregate counts cannot appear healthy.
-            if synchronization_pending(dataset.root):
-                st.session_state[f"{namespace}:save_error"] = str(error)
-                st.rerun()
-    if draft.dirty:
-        st.sidebar.caption("Filing selection is locked until you save or discard pending changes.")
+        _persist(dataset, case, draft, result.labels, namespace)
+    previous = adjacent_case(list(cases), case.case_id, -1)
+    following = adjacent_case(list(cases), case.case_id, 1)
+    st.sidebar.caption(
+        "Confirm the entire filing package, including absent metrics. "
+        "Empty arrays and explicitly retained unknown start dates are allowed."
+    )
+    if st.sidebar.button(
+        "Confirm and next", disabled=pending or bool(result.errors) or navigation.target is not None,
+        key=f"{namespace}:{case.case_id}:confirm",
+    ):
+        _persist(dataset, case, draft, result.labels, namespace, confirm=True, target=following)
+    for label, target in (("Previous", previous), ("Next", following)):
+        st.sidebar.button(
+            label, disabled=pending or target is None,
+            on_click=_request_filing, args=(namespace, target, dataset.root),
+            key=f"{namespace}:{case.case_id}:{label.lower()}",
+        )
+    if navigation.target is not None:
+        target = navigation.target
+        st.sidebar.warning(f"Leave {case.ticker} for {cases[target].ticker}? Save, Discard or Stay.")
+        if st.sidebar.button("Save", disabled=pending or bool(result.errors), key=f"{namespace}:leave_save"):
+            _persist(dataset, case, draft, result.labels, namespace, target=target)
+        st.sidebar.button(
+            "Discard", disabled=pending, on_click=_discard,
+            args=(namespace, dataset.root, case.case_id, target), key=f"{namespace}:leave_discard",
+        )
+        st.sidebar.button("Stay", on_click=navigation.stay, key=f"{namespace}:leave_stay")
 
 
 def main(argv: Sequence[str] | None = None) -> None:
@@ -187,7 +275,7 @@ def main(argv: Sequence[str] | None = None) -> None:
     st.title("EPS dataset review")
     st.info(
         "Save changes persists corrections and synchronizes exports. Saving does not confirm a filing. "
-        "Confirmation is not available yet. Unsaved edits are lost when the session ends."
+        "Confirm and next saves and confirms the whole filing. Unsaved edits are lost when the session ends."
     )
     try:
         root = parse_dataset_root(argv)

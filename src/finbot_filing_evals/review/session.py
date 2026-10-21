@@ -1,11 +1,33 @@
 """Session-only drafts; no persistence or Streamlit dependency."""
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from copy import deepcopy
 from dataclasses import dataclass, field
 from typing import Any
 
 from .editor import COLUMNS, labels_to_rows, validate_rows
+
+
+@dataclass
+class NavigationGuard:
+    """Remember a requested destination until Save, Discard or Stay resolves it."""
+
+    target: str | None = None
+
+    def request(self, current: str, target: str, *, dirty: bool, pending: bool = False) -> str:
+        if pending:
+            return current
+        self.target = target if dirty and target != current else None
+        return current if dirty else target
+
+    def stay(self) -> None:
+        self.target = None
+
+
+def adjacent_case(case_ids: Sequence[str], current: str, offset: int) -> str | None:
+    """Find a manifest-order neighbor without wrapping at either boundary."""
+    index = case_ids.index(current) + offset
+    return case_ids[index] if 0 <= index < len(case_ids) else None
 
 
 @dataclass
@@ -46,13 +68,18 @@ class EditorDraft:
         self.rows = rows
 
     def discard(self) -> None:
+        self.base_rows = labels_to_rows(self.saved_labels)
         self.rows = deepcopy(self.base_rows)
         # A fresh widget key drops Streamlit's old edit/add/delete deltas.
+        self.generation += 1
+
+    def resume(self) -> None:
+        """Recreate a hidden/removed widget from retained rows without replaying deltas."""
+        self.base_rows = deepcopy(self.rows)
         self.generation += 1
 
     def accept_saved(self, labels: dict[str, Any], fingerprint: str) -> None:
         """Rebase on a durable saved case and drop old editor deltas."""
         self.saved_labels = deepcopy(labels)
         self.opened_fingerprint = fingerprint
-        self.base_rows = labels_to_rows(labels)
         self.discard()

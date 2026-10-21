@@ -142,3 +142,21 @@ def test_capture_latest_widget_changes_for_navigation(labels):
     assert draft.base_rows[0]["Value"] == "4.60"
     draft.capture_widget_changes({})
     assert not draft.dirty
+
+
+def test_resume_removed_widget_keeps_partial_rows_and_discard_restores_saved_labels(labels):
+    draft = EditorDraft(labels, 'fingerprint')
+    draft.capture_widget_changes({
+        'deleted_rows': [0], 'added_rows': [{'Value': 'unfinished'}],
+    })
+    pending = deepcopy(draft.rows)
+    draft.resume()
+    # A recreated widget starts with no deltas against its new stable base.
+    draft.capture_widget_changes({})
+    assert draft.rows == pending
+    assert draft.dirty
+    assert draft.generation == 1
+    draft.discard()
+    assert draft.rows == labels_to_rows(labels)
+    assert not draft.dirty
+    assert draft.generation == 2

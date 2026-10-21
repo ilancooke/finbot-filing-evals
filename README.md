@@ -5,12 +5,13 @@ SEC documents collected by `finbot-filings`. The immediate implementation target
 is a local Streamlit UI for inspecting documents, correcting reported/adjusted
 diluted EPS labels, and confirming a golden dataset for later evaluation.
 
-**Current state:** Steps 1–4 are implemented. A local Streamlit app loads and
+**Current state:** Steps 1–5 are implemented. A local Streamlit app loads and
 validates the document EPS draft dataset, with filing/attachment selectors,
 isolated formatted HTML viewing, readable text fallback, original-file downloads,
 EPS editing, row validation, review notes, saved status and **Save changes**.
-Saves include backups, synchronized exports, integrity refresh and restart-safe
-recovery. Confirmation is not implemented yet.
+Saves and confirmation include backups, synchronized exports, integrity refresh
+and restart-safe recovery. **Confirm and next**, previous/next navigation and
+Save/Discard/Stay guards are available. Catalog refresh remains Step 6.
 The previous screenshot pipeline has been removed.
 
 ## Start a new implementation session
@@ -110,12 +111,20 @@ and ISO `YYYY-MM-DD` dates. Blank starts remain null and are highlighted; end da
 are required. Calendar dates, date order and duplicate periods are validated.
 
 Edits survive app reruns, attachment changes and document view changes within the
-session. **Unsaved changes** includes invalid/partial rows. Filing selection is
-disabled while edits are pending; choose **Save changes** to persist valid labels
-or **Discard changes** to restore the current saved labels and unlock it.
-Returning all values to their saved state also clears
-the unsaved indicator. Review notes and saved status are shown separately and are
-not edited by the table. Unsaved edits are lost when the session ends.
+session. **Unsaved changes** includes invalid/partial rows. Select a filing or use
+**Previous**/**Next** to navigate in manifest order. When leaving with edits,
+the app stays on the current filing and offers **Save**, **Discard** or **Stay**:
+Save persists valid corrections, then moves; Discard reloads the latest saved
+labels, clears the old editor state, then moves; Stay keeps the pending edits on
+the current filing. Invalid rows disable Save until corrected, while Discard and
+Stay remain available. Attachment changes preserve edits without a prompt.
+
+**Save changes** and **Discard changes** also work without leaving the current
+filing. Returning all values to their saved state clears the unsaved indicator.
+Review notes and saved status are shown separately and are not edited by the
+table. Drafts and navigation requests are isolated by dataset path and filing.
+Restarting opens the first filing in manifest order with its saved labels/status;
+unsaved edits and navigation requests are lost when the session ends.
 
 Choose **Readable text** for text extracted directly from the original, without
 requiring precomputed `review-text/` files. **Download original HTML** returns
@@ -136,9 +145,24 @@ scrolling. Use text fallback if a source layout is difficult to read.
 **Save changes** persists corrections without confirming an unreviewed filing.
 Changing labels of an already confirmed case resets it to unreviewed and clears
 its confirmation timestamp. A service-level no-op save preserves confirmation;
-the UI disables Save when nothing changed. Step 5 will add **Confirm and next**
-and Save/Discard/Stay navigation; Step 6 will add catalog refresh. Current filing
-navigation remains locked until pending edits are saved or discarded.
+the UI disables Save changes when nothing changed.
+
+**Confirm and next** saves valid labels, sets the filing status to `human_reviewed`
+and records the writer's current UTC timestamp. Confirmation covers the entire
+selected filing package, including completeness and absent metrics. Valid empty
+arrays and explicitly retained unknown start dates can be confirmed; their meaning
+and review notes remain visible. A fresh confirmation updates the timestamp even
+if the labels were already saved. On success, the app moves to the next filing in
+manifest order. Confirming the last filing stays there and shows an end-of-list
+completion message without wrapping or implying earlier filings were confirmed.
+The saved status and confirmation timestamp are restored after restart.
+
+Failed saves or confirmations retain the current filing and draft. Pending
+synchronization blocks further writes and filing navigation. Retry synchronization
+finishes the recorded action, including its original confirmation timestamp, and
+stays on the current filing; navigation requires another explicit action. A
+pending Save/Discard/Stay destination is retained within the session. Catalog
+outputs are not automatically refreshed until Step 6.
 
 ## Durable saves, backups and recovery
 
@@ -224,7 +248,8 @@ From the repository root, override the dataset explicitly with:
 appends `filing-evals/golden/earnings-eps-v1` to the shared data root. Missing
 configuration, unavailable files or failed validation show an error; the app
 never creates a dataset or substitutes another corpus. Opening/editing is read-only;
-Save changes and Retry synchronization explicitly write to the selected bundle.
+Save changes, navigation's Save, Confirm and next, and Retry synchronization
+explicitly write to the selected bundle.
 
 ## Dataset foundation
 
@@ -251,15 +276,24 @@ and the two-array extraction payload without numeric coercion or UI-only fields.
 `validate_rows()` reports all invalid rows, unknown start row numbers and either
 a valid payload or no payload. `review.session.EditorDraft` retains the opened
 fingerprint, stable widget input, pending rows, dirty status and discard generation.
-These helpers do not import Streamlit or write files.
+`EditorDraft.resume()` recreates a removed widget from retained pending rows;
+Discard still restores saved labels. `NavigationGuard` retains a requested
+destination for Save/Discard/Stay, and `adjacent_case()` finds manifest-order
+neighbors without wrapping. These helpers do not import Streamlit or write files.
 
 `review.persistence.save_changes(root, case_id, opened_fingerprint, labels,
-clock=...)` returns `SaveResult(dataset, case_id, changed)` after full verification.
+clock=...)` and `review.persistence.confirm_case(...)` return
+`SaveResult(dataset, case_id, changed)` after full verification; `changed` includes
+changes to review state as well as labels. Confirmation shares the label writer's
+lock, stale-session detection, backups, export validation and recovery path.
 `SaveConflict` retains stale drafts; `SynchronizationPending.committed` distinguishes
 whether the intended case bytes reached disk. `synchronization_pending(root)` is
 read-only; `retry_synchronization(root)` finishes an interrupted save. The v1
 `pending.json` records the baseline inventory, expected replacement digests/sizes,
-prior integrity digest, case/backup paths, transaction ID and UTC modification time.
+prior integrity digest, case/backup paths, transaction ID, UTC modification time
+and action (`save_changes` or `confirm`). Older v1 journals without an action are
+recovered as label saves. Recovery checks the intended review transition as well
+as label/export agreement; it never obtains a new confirmation time on retry.
 `review.exports.build_exports()` is UI-independent and stages string-only Parquet
 and matching JSON in memory. These services require the `review` extra's PyArrow.
 
@@ -272,7 +306,9 @@ the HTML tooling. Loading a dataset does not import the UI dependencies. The
 former screenshot tests were removed; the new tests cover the dataset contract,
 path/source validation, viewer isolation/sanitization, lossless editor conversion,
 row validation, pending edits/discard, app navigation/downloads, saves, stale writes,
-process locking, export agreement and injected failure/restart recovery.
+process locking, export agreement, confirmation timestamps/invalidation,
+Save/Discard/Stay navigation, last-case completion, dataset isolation and injected
+failure/restart recovery.
 
 Compile and verify the installed package:
 

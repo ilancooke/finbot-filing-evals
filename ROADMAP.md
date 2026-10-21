@@ -15,13 +15,14 @@ $FINBOT_DATA_ROOT/filing-evals/golden/earnings-eps-v1/
 Initially it contains 13 filing packages, 27 HTML documents, and 34 observations
 (25 reported and 9 adjusted). Forms: eight 8-Ks, two 6-Ks, two 10-Qs, one 10-K.
 Counts are an initial reference, not constants: edits can add/delete observations.
-The previous screenshot pipeline has been removed without an archive. Step 1 is
-complete, and Step 2 adds formatted viewing, readable text and original downloads.
+The previous screenshot pipeline has been removed without an archive. Steps 1–5
+are complete, including formatted viewing, readable text and original downloads.
 Steps 1–3 provide dataset validation/models, document viewing and a validated
 session editor. Step 4 adds durable Save changes, synchronized exports, backups,
 stale-session checks and interrupted-save recovery. The Streamlit shell, launch
 script, `review` extra and offline tests exist. The core dependency is `jsonschema`.
-Confirmation and catalog refresh remain future steps.
+Step 5 adds durable confirmation, UTC timestamps, manifest-order navigation and
+Save/Discard/Stay guards. Progress and catalog refresh remain Step 6.
 
 ## Cleanup baseline
 
@@ -62,7 +63,7 @@ implementation work is Step 1. Do not recreate the deleted screenshot code.
 | 2 | Document viewer | Step 1 | Complete |
 | 3 | Editable labels and validation | Step 2 | Complete |
 | 4 | Durable saves and synchronized exports | Step 3 | Complete |
-| 5 | Confirmation and guarded navigation | Step 4 | Pending |
+| 5 | Confirmation and guarded navigation | Step 4 | Complete |
 | 6 | Progress and catalog refresh | Step 5 | Pending |
 | 7 | End-to-end verification and operating docs | Step 6 | Pending |
 
@@ -517,17 +518,17 @@ consistent file set, not automatic acceptance or hash regeneration. Keep pending
 Prerequisite: Step 4 save/export service. Deliver confirmation/navigation in the
 app and session-state helpers, using that same persistence path.
 
-- [ ] Implement Save changes and Confirm and next with distinct review semantics.
+- [x] Implement Save changes and Confirm and next with distinct review semantics.
   Confirmation timestamps come from an injectable UTC clock, not UI-supplied dates.
-- [ ] Add previous/next and direct filing selection in manifest order. Only move
+- [x] Add previous/next and direct filing selection in manifest order. Only move
   after a successful requested save/confirmation; pending recovery keeps the user
   on the current case. Last-case confirmation shows completion without wrapping.
-- [ ] When leaving with edits, offer Save, Discard or Stay. Discard restores the
+- [x] When leaving with edits, offer Save, Discard or Stay. Discard restores the
   last saved case and clears its stale editor widget state. Attachment switching
   preserves pending labels and requires no extra confirmation.
-- [ ] Restore saved labels/status on restart and prevent state leaking between
+- [x] Restore saved labels/status on restart and prevent state leaking between
   filings or dataset paths. Session-only editing never counts as a durable review.
-- [ ] Allow confirmation of valid empty arrays or explicitly retained null starts;
+- [x] Allow confirmation of valid empty arrays or explicitly retained null starts;
   keep their meaning and current review notes visible.
 
 Acceptance: complete Save/Confirm flows persist different states; a failed save
@@ -535,7 +536,64 @@ never advances; Save of changed reviewed labels invalidates confirmation; a no-o
 save preserves it. Save/Discard/Stay and last-case navigation behave correctly;
 restart restores saved state. Use temporary data and deterministic timestamps.
 
-Handoff: Pending. Record navigation/state behavior and confirmation checks.
+Handoff (2026-10-21 UTC): complete. Implementation:
+
+- `review/persistence.py`: `confirm_case(root, case_id, opened_fingerprint,
+  labels, clock=...)` shares the existing serialized save, backup, staged export,
+  integrity and recovery path. It sets `human_reviewed` and an explicit UTC
+  timestamp from the injectable writer clock, including when labels are unchanged.
+  A fresh confirmation records a fresh clock value. Save changes still leaves
+  unreviewed cases unreviewed, invalidates confirmation after changed labels and
+  preserves confirmation on a no-op. `SaveResult.changed` includes review changes.
+- Recovery journals remain v1, with an `action` of `save_changes` or `confirm`.
+  Journals from Step 4 without an action default to label saves. Recovery validates
+  the action's exact review transition against the original case and recorded UTC
+  timestamp before writing; retries preserve that timestamp rather than calling
+  the clock again. Unknown actions or inconsistent review transitions are refused.
+- `review/app.py`: Confirm and next, Previous, Next and direct filing selection
+  follow manifest order. Successful confirmation advances only after synchronized
+  persistence; confirming the last case stays there with an end-of-list message,
+  without claiming earlier cases were confirmed. Saved confirmation time/status,
+  review notes, empty-metric explanations and null-start warnings remain visible.
+- Leaving with edits keeps the current case and offers Save/Discard/Stay. Save
+  persists valid labels before moving; Discard reloads the latest durable case at
+  click time and clears old widget deltas before moving; Stay retains edits. Invalid
+  rows disable Save/Confirm but still allow Discard/Stay. Standalone Save changes
+  and Discard changes stay on the current filing. Attachment changes need no guard.
+- `review/session.py`: `NavigationGuard` retains the requested destination and
+  `adjacent_case()` avoids boundary wrapping. Navigation callbacks capture editor
+  deltas arriving with the same event and check current on-disk pending state.
+  A synchronization failure retains the current case, draft and session destination
+  and blocks writes/navigation. Retry finishes synchronization without advancing;
+  choose navigation again (or the guard's Save/Discard) afterward. Restart restores
+  saved labels/status, starts at the first manifest case and drops session requests.
+- Drafts, destinations, selectors and attachment choices remain namespaced by
+  resolved dataset path and case. `EditorDraft.resume()` recreates a hidden widget
+  from retained rows after switching dataset paths, including partial rows, while
+  Discard still restores saved labels. No editor state crosses filing boundaries.
+- `tests/test_review_{persistence,app,editor}.py`, README and roadmap: deterministic
+  confirmation timestamps, unchanged/corrected/empty labels, null starts, review
+  metadata preservation, no-op/invalidation, stale/invalid refusals, pre/post-commit
+  confirmation recovery, legacy journals, all Save/Discard/Stay navigation routes,
+  delayed events, new external pending saves, manifest order, last-case completion,
+  widget cleanup, restart and dataset-path isolation.
+
+Checks: predecessor baseline 184 tests passed; final 217 tests passed with network
+connections blocked. Repo-local Python 3.14.8 compileall, import/version, `pip check`
+and `git diff --check` passed. The documented isolated wheel build passed; imports
+from the extracted wheel, confirmation/navigation helpers and packaged schema were
+verified outside the source tree. Streamlit started on localhost port 8515 with an
+explicit disposable synthetic bundle (headless, usage stats disabled), and its
+health endpoint returned HTTP 200 / `ok`. The bundle bytes were unchanged; the
+process and temporary files were removed. Sandbox DNS initially blocked the build
+and localhost binding initially blocked startup; the same checks passed outside
+the sandbox. AppTest exercised actual Streamlit editor and navigation state; no
+visual browser inspection is claimed. No real shared dataset was changed.
+
+Limitations/next action: Step 6, saved progress and catalog refresh. Automatic
+catalog refresh remains absent. Navigation destinations, drafts and attachment
+choices remain session-only. Existing local POSIX locking, retained backups and
+HTML display limitations still apply. Full real-browser workflow QA remains Step 7.
 
 ## Step 6 — Progress and catalog refresh
 

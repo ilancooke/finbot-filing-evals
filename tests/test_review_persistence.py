@@ -104,6 +104,138 @@ def test_noop_preserves_confirmation_and_changed_labels_invalidate(writable_data
     assert review == dict(status='unreviewed', notes=case.to_dict()['review']['notes'], reviewed_at_utc=None, reviewer_extra={'keep': 1})
 
 
+@pytest.mark.parametrize('labels_mode', ['unchanged', 'corrected', 'empty'])
+def test_confirmation_saves_labels_timestamp_and_exports(writable_dataset, labels_mode):
+    root = writable_dataset
+    case = load_dataset(root).cases[0]
+    labels = case.to_dict()['labels']
+    if labels_mode == 'corrected':
+        labels['reported_diluted_eps'][0]['value'] = '-4.60'
+    elif labels_mode == 'empty':
+        labels = {metric: [] for metric in labels}
+    before = p.inventory(root)
+    original = case.path.read_bytes()
+    result = p.confirm_case(root, case.case_id, case.fingerprint, labels, clock=lambda: NOW)
+    assert result.changed  # Confirmation alone is a durable case change.
+    confirmed = load_dataset(root).cases[0]
+    assert confirmed.to_dict()['labels'] == labels
+    assert confirmed.to_dict()['review'] == dict(
+        status='human_reviewed', reviewed_at_utc='2026-10-20T12:30:00Z', notes=list(case.notes),
+    )
+    assert confirmed.to_dict()['filing'] == case.to_dict()['filing']
+    assert [f.read_bytes() for f in (root / '.review').glob('*/case.before.json')] == [original]
+    p.verify_bundle(result.dataset)
+    after = p.inventory(root)
+    changed = {case.path.relative_to(root).as_posix(), *p.EXPORT_FILES}
+    assert all(after[name] == digest for name, digest in before.items() if name not in changed)
+    rows = json.loads((root / 'labels.json').read_text())
+    assert all(row['review_status'] == 'human_reviewed' for row in rows if row['case_id'] == case.case_id)
+    assert result.dataset.to_dict()['review_status'] == 'in_progress'
+    noop = save(root, confirmed, labels)
+    assert not noop.changed
+    assert p.inventory(root) == after
+    labels = deepcopy(labels)
+    labels['adjusted_diluted_eps'] = [dict(
+        value='0.00', currency='USD', period='Q3', period_start=None, period_end='2026-09-30',
+    )]
+    invalidated = save(root, confirmed, labels).dataset.cases[0]
+    assert invalidated.review_status == 'unreviewed'
+    assert invalidated.to_dict()['review']['reviewed_at_utc'] is None
+
+
+def test_confirmation_uses_injected_utc_clock_and_preserves_review_extras(writable_dataset):
+    root = writable_dataset
+    case = load_dataset(root).cases[0]
+    record = case.to_dict()
+    record['review']['reviewer_extra'] = {'keep': True}
+    save_json(case.path, record)
+    prepare_bundle(root)
+    case = load_dataset(root).cases[0]
+    before = p.inventory(root)
+    for invalid in (datetime(2026, 10, 20), '2026-10-20T00:00:00Z'):
+        with pytest.raises(ReviewError, match='explicit UTC'):
+            p.confirm_case(root, case.case_id, case.fingerprint, case.to_dict()['labels'], clock=lambda: invalid)
+    assert p.inventory(root) == before
+    result = p.confirm_case(root, case.case_id, case.fingerprint, case.to_dict()['labels'], clock=lambda: NOW)
+    reviewed = result.dataset.cases[0]
+    later = datetime(2026, 10, 21, tzinfo=timezone.utc)
+    renewed = p.confirm_case(root, case.case_id, reviewed.fingerprint, reviewed.to_dict()['labels'], clock=lambda: later)
+    assert renewed.dataset.cases[0].to_dict()['review'] == dict(
+        status='human_reviewed', notes=list(case.notes), reviewed_at_utc='2026-10-21T00:00:00Z',
+        reviewer_extra={'keep': True},
+    )
+
+
+def test_confirmation_refuses_stale_or_invalid_labels(writable_dataset):
+    root = writable_dataset
+    case, labels = opened(root)
+    invalid = deepcopy(labels)
+    invalid['reported_diluted_eps'][0]['value'] = 'NaN'
+    before = p.inventory(root)
+    with pytest.raises(ReviewError):
+        p.confirm_case(root, case.case_id, case.fingerprint, invalid, clock=lambda: NOW)
+    assert p.inventory(root) == before
+    save(root, case, labels)
+    before = p.inventory(root)
+    with pytest.raises(p.SaveConflict):
+        p.confirm_case(root, case.case_id, case.fingerprint, labels, clock=lambda: NOW)
+    assert p.inventory(root) == before
+
+
+@pytest.mark.parametrize('fail_at', ['case', 'labels.json', 'integrity.json'])
+def test_interrupted_confirmation_recovers_exact_review_transition(writable_dataset, monkeypatch, fail_at):
+    root = writable_dataset
+    case, labels = opened(root)
+    atomic = p._atomic
+    def fail(root, name, raw):
+        if name == (case.path.relative_to(root).as_posix() if fail_at == 'case' else fail_at):
+            raise OSError('interrupted confirmation')
+        return atomic(root, name, raw)
+    with monkeypatch.context() as m:
+        m.setattr(p, '_atomic', fail)
+        with pytest.raises(p.SynchronizationPending) as error:
+            p.confirm_case(root, case.case_id, case.fingerprint, labels, clock=lambda: NOW)
+    assert error.value.committed == (fail_at != 'case')
+    recovered = p.retry_synchronization(root)
+    assert recovered.changed
+    assert recovered.dataset.cases[0].to_dict()['labels'] == labels
+    assert recovered.dataset.cases[0].to_dict()['review']['reviewed_at_utc'] == '2026-10-20T12:30:00Z'
+    assert recovered.dataset.cases[0].review_status == 'human_reviewed'
+    p.verify_bundle(recovered.dataset)
+
+
+@pytest.mark.parametrize('action', [None, 'confirm', 'unknown'])
+def test_recovery_action_validates_transition_and_supports_step4_journals(writable_dataset, monkeypatch, action):
+    root = writable_dataset
+    case, labels = opened(root)
+    atomic = p._atomic
+    def fail(root, name, raw):
+        if name == 'labels.json':
+            raise OSError('stop after commit')
+        return atomic(root, name, raw)
+    with monkeypatch.context() as m:
+        m.setattr(p, '_atomic', fail)
+        with pytest.raises(p.SynchronizationPending):
+            save(root, case, labels)
+    marker_path = root / '.review/pending.json'
+    marker = json.loads(marker_path.read_text())
+    if action is None:
+        marker.pop('action')  # Exact Step 4 v1 journal format.
+    else:
+        marker['action'] = action
+    save_json(marker_path, marker)
+    if action is None:
+        recovered = p.retry_synchronization(root)
+        assert recovered.dataset.cases[0].review_status == 'unreviewed'
+        p.verify_bundle(recovered.dataset)
+    else:
+        before = p.inventory(root)
+        with pytest.raises(p.SynchronizationPending, match='review transition|Unknown review action'):
+            p.retry_synchronization(root)
+        assert p.inventory(root) == before
+        assert p.synchronization_pending(root)
+
+
 @pytest.mark.parametrize('reviewed', [0, 1, 2])
 def test_aggregate_and_row_review_states(writable_dataset, reviewed):
     for case in load_dataset(writable_dataset).cases[:reviewed]:

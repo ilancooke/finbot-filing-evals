@@ -192,6 +192,17 @@ def _now():
     return datetime.now(timezone.utc)
 
 
+def _review_transition(original: dict, action: str, timestamp: str) -> dict:
+    review = dict(original['review'])
+    if action == 'save_changes':
+        review.update(status='unreviewed', reviewed_at_utc=None)
+    elif action == 'confirm':
+        review.update(status='human_reviewed', reviewed_at_utc=timestamp)
+    else:
+        raise ReviewError("Unknown review action in save/recovery.")
+    return review
+
+
 def _journal(root: Path) -> dict:
     marker, _, _ = _read_json(root, '.review/pending.json')
     if marker.get('version') != 1 or not isinstance(marker.get('transaction'), str):
@@ -238,10 +249,17 @@ def _resume(root: Path) -> SaveResult:
     if {k: v for k, v in proposal.items() if k not in {'labels', 'review'}} != {k: v for k, v in original.items() if k not in {'labels', 'review'}}:
         raise ReviewError("Recovery may only replace labels and review state.")
     validate_labels(proposal['labels'])
-    expected_review = dict(original['review'])
-    expected_review.update(status='unreviewed', reviewed_at_utc=None)
+    # Step 4 v1 journals have no action and remain recoverable as label saves.
+    action = marker.get('action', 'save_changes')
+    try:
+        timestamp = _utc(lambda: datetime.fromisoformat(marker['timestamp']))
+    except (TypeError, ValueError) as error:
+        raise ReviewError("Invalid recovery UTC timestamp.") from error
+    if timestamp != marker['timestamp']:
+        raise ReviewError("Recovery timestamp must use the writer's UTC format.")
+    expected_review = _review_transition(original, action, timestamp)
     if proposal['review'] != expected_review:
-        raise ReviewError("Recovery review state differs from the intended label-save transition.")
+        raise ReviewError("Recovery review state differs from the intended review transition.")
     _source_snapshots(dataset)
     records = [proposal if case.case_id == proposal['case_id'] else case.to_dict() for case in dataset.cases]
     # Rebuild from the authoritative cases plus the journal's intended case. This
@@ -267,7 +285,7 @@ def _resume(root: Path) -> SaveResult:
         # needing retry, with its recovery record available in the running app.
         _atomic(root, '.review/pending.json', json_bytes(marker))
         raise
-    return SaveResult(result, proposal['case_id'], proposal['labels'] != original['labels'])
+    return SaveResult(result, proposal['case_id'], proposal != original)
 
 
 def _pending_error(root: Path, error: Exception) -> SynchronizationPending:
@@ -297,6 +315,15 @@ def retry_synchronization(root: str | Path) -> SaveResult:
 
 def save_changes(root: str | Path, case_id: str, opened_fingerprint: str, labels: dict, *, clock=None) -> SaveResult:
     """Persist valid labels without confirmation; retain existing review notes."""
+    return _save(root, case_id, opened_fingerprint, labels, action='save_changes', clock=clock)
+
+
+def confirm_case(root: str | Path, case_id: str, opened_fingerprint: str, labels: dict, *, clock=None) -> SaveResult:
+    """Save valid labels and confirm the whole filing using a writer-owned UTC clock."""
+    return _save(root, case_id, opened_fingerprint, labels, action='confirm', clock=clock)
+
+
+def _save(root, case_id, opened_fingerprint, labels, *, action, clock) -> SaveResult:
     root = Path(root).resolve(strict=True)
     try:
         with writer_lock(root):
@@ -313,12 +340,12 @@ def save_changes(root: str | Path, case_id: str, opened_fingerprint: str, labels
             baseline = dict(integrity['files'])
             integrity_before = _digest(_target(root, 'integrity.json').read_bytes())
             original = case.to_dict()
-            if labels == original['labels']:
+            if action == 'save_changes' and labels == original['labels']:
                 return SaveResult(dataset, case_id, False)
             timestamp = _utc(clock or _now)
             proposal = case.to_dict()
             proposal['labels'] = labels
-            proposal['review'].update(status='unreviewed', reviewed_at_utc=None)
+            proposal['review'] = _review_transition(original, action, timestamp)
             records = [proposal if item.case_id == case_id else item.to_dict() for item in dataset.cases]
             metadata, _, _ = _read_json(root, 'labels.metadata.json')
             case_path = case.path.relative_to(root).as_posix()
@@ -333,7 +360,7 @@ def save_changes(root: str | Path, case_id: str, opened_fingerprint: str, labels
             _sync_dir(directory.parent)
             backup = f'.review/{transaction}/case.before.json'
             _atomic(root, backup, case.path.read_bytes())
-            marker = dict(version=1, transaction=transaction, case_path=case_path, backup=backup,
+            marker = dict(version=1, action=action, transaction=transaction, case_path=case_path, backup=backup,
                           backup_canonical=_digest(json_bytes(original)), timestamp=timestamp,
                           baseline=baseline, integrity_before=integrity_before,
                           replacements={name: _digest(raw) for name, raw in replacements.items()})
