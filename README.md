@@ -4,6 +4,10 @@ This package provides a local Streamlit UI for inspecting original SEC documents
 collected by `finbot-filings`, correcting reported/adjusted diluted EPS labels,
 and confirming a golden dataset for later extraction evaluation.
 
+![EPS review UI showing saved filing progress, an ASML document, the EPS editor and review notes](docs/images/eps-review-ui.png)
+
+ASML filing review in Firefox, captured from a disposable dataset copy.
+
 **Current state:** Steps 1–7 are complete. A local Streamlit app loads and
 validates the document EPS draft dataset, with filing/attachment selectors,
 isolated formatted HTML viewing, readable text fallback, original-file downloads,

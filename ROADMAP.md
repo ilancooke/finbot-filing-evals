@@ -835,6 +835,20 @@ Limitations: this exposes linear page transcriptions; missing image assets mean
 the original financial-table alignment cannot be restored from this HTML alone.
 The seven implementation steps above remain complete.
 
+## Maintenance — README UI screenshot
+
+Handoff (2026-10-22): complete. Added `docs/images/eps-review-ui.png` near the
+top of README.md with descriptive alt text and a caption. Firefox's built-in
+page screenshot captures the ASML filing viewer, EPS editor, review notes and
+saved progress without browser chrome. Capture used a complete disposable copy
+of the canonical bundle with catalog refresh disabled; no Save or Confirm action
+was performed. The temporary server and screenshot tab were closed afterward.
+
+Checks: visually inspected the saved PNG (3420 × 1733), verified the README image
+target, and compared all 261 bundle file hashes before/after for both canonical
+data and the copy; both were unchanged. Compileall, all 266 tests, dependency
+and whitespace checks passed. No runtime behavior changed or new tests were needed.
+
 ## Boundaries for every step
 
 Maintenance (2026-10-21): supporting raster viewing is implemented alongside the
