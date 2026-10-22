@@ -1,5 +1,10 @@
 # EPS evaluation experiments — 2026-10-22
 
+This is the earlier **Nova prompt/input experiment record**. The later
+[full experiment report](MODEL_EXPERIMENT_REPORT.md) covers all 18 saved runs,
+including alternative Bedrock models, direct Luna/Haiku APIs and cached repeats.
+Its model-selection findings supersede the Nova-only decision below.
+
 ## Current decision
 
 Use **Nova 2 Lite through Bedrock, prompt v4, plain-text HTML extraction and

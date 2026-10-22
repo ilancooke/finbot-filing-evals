@@ -1,0 +1,14 @@
+{
+  "provider": "bedrock",
+  "name": "qwen3-vl-235b-bedrock-prompt-v4",
+  "model": "qwen.qwen3-vl-235b-a22b",
+  "region": "us-east-1",
+  "prompt_file": "../prompts/eps-v4.txt",
+  "html_input": "plain_text",
+  "settings": {
+    "max_output_tokens": 4096,
+    "output_mode": "text"
+  },
+  "timeout_seconds": 120,
+  "label_contract": "earnings_eps.fiscal.v2"
+}

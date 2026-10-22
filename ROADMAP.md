@@ -26,7 +26,22 @@ Save/Discard/Stay guards. Step 6 adds saved progress and canonical catalog refre
 with durable status and retry. Step 7 verifies the complete disposable-copy browser
 workflow, restart, outputs and clean installation, and supplies operating docs.
 
-## Current evaluation baseline — 2026-10-22
+## Current experiment findings — 2026-10-22
+
+The [full experiment report](docs/MODEL_EXPERIMENT_REPORT.md) summarizes all
+18 saved runs: 16 comparable fiscal v2 evaluations and two separate legacy runs.
+Luna 6 through OpenAI is the leading candidate for broader testing: three runs
+matched 20/20 observations and 13/13 filings, with identical predictions.
+The first measured run cost $0.054453210; cache-hit repeats cost $0.00525418 and
+$0.00529318. Sonnet, Kimi and Haiku each achieved one perfect full-bundle run.
+The report documents latency, tokens, partial costs, post-hoc rates, integration
+failures and the lack of held-out validation. Advance to newly reviewed coverage
+using fixed v4 plain-text/image inputs; no config has been silently repointed.
+
+The Nova findings below remain the historical prompt/input reference. The full
+report supersedes their model-selection recommendation.
+
+## Nova reference baseline — 2026-10-22
 
 Use **Nova 2 Lite through Bedrock, prompt v4, plain-text HTML extraction plus
 original images**. The recommended config is
@@ -52,7 +67,7 @@ claims. Retain v4 text as the baseline, pause further prompt/input-format tuning
 on this set, and favor repeatability checks and additional reviewed coverage.
 Other prompts/input modes remain available for controlled reproduction.
 
-See [docs/EVALUATION_EXPERIMENTS.md](docs/EVALUATION_EXPERIMENTS.md) for all seven
+See [docs/EVALUATION_EXPERIMENTS.md](docs/EVALUATION_EXPERIMENTS.md) for the seven Nova
 run IDs, observed failures, tokens, costs, limitations and comparison commands.
 The original reviewed bundle, old runs and strict scoring remain unchanged.
 The Streamlit evaluation screen remains a future roadmap item, not part of the
@@ -487,6 +502,175 @@ inventories and documented F1/exact-filing/cost/token figures were verified
 read-only. The v4 prompt and inference settings align across input modes.
 This handoff changed documentation and environment-example comments only;
 no new tests, live inference, data/catalog writes or runtime changes were needed.
+
+## Alternative model configurations — complete
+
+Prepare four explicit v4 plain-text-plus-original-image configs for Claude
+Sonnet 4.6, Kimi K3, Mistral Large 3 and Qwen3 VL 235B A22B. Preserve the Nova
+baseline, golden source, prompt, fiscal v2 scoring and existing run artifacts.
+No provider inference or AWS resource/account changes are part of preparation.
+
+- [x] Verify current model IDs, account availability and documented Converse support.
+- [x] Add configs, document response-mode differences and verified/unknown pricing.
+- [x] Add offline text/image request and compatible-run comparison checks.
+- [x] Run the full package checks and record the final handoff.
+
+Handoff (2026-10-22): added `configs/bedrock-claude-sonnet-4-6-prompt-v4.json`,
+`bedrock-kimi-k3-prompt-v4.json`, `bedrock-mistral-large-3-prompt-v4.json` and
+`bedrock-qwen3-vl-235b-prompt-v4.json`. All select the unchanged v4 prompt,
+plain-text HTML, original images, fiscal v2 labels, `us-east-1`, 4096 output tokens
+and 120-second read timeout. Sonnet uses existing forced-tool mode; the other
+three use strict JSON text mode because specific named forced-tool support was
+not established. The shared adapter, schemas, scoring and baseline are unchanged.
+Kimi retains provider-default reasoning (maximum effort); budget exhaustion stays
+a visible error rather than triggering a retry with different settings.
+
+Read-only AWS MCP calls verified account availability for all four and their
+US profile/direct IDs. AWS model cards confirm Converse support. Kimi's full US
+standard pricing was checked against its card and Price List catalog
+`20261016210806` and pinned in its config. Sonnet/Mistral/Qwen omit optional
+pricing: Sonnet's complete table was not established through Price List, while
+the Mistral/Qwen input/output records do not establish complete cache rates.
+Their cost stays unknown; README records this limitation rather than borrowing
+Nova prices. README and `.env.example` list the new configs and explicit run
+commands, response-mode differences, reasoning/input limits and comparison rules.
+
+Validation: **445 tests passed**, including five new checks in
+`tests/test_evaluation_model_configs.py`. Mocked requests verify text plus exact
+original image bytes, unchanged prompt/schema, model IDs and response modes.
+Full synthetic candidate runs freeze the same targets, preserve source hashes,
+score correctly, retain known/unknown costs and compare with a synthetic Nova
+run. Compileall, import/version, `pip check` and whitespace checks passed. The
+documented isolated wheel build passed with network access for setuptools;
+an initial offline build lacked setuptools and sandbox DNS blocked its download.
+No runtime/dependency changes, live inference, golden-label or catalog writes,
+AWS resource/account changes, or sibling-package changes were made. Live provider
+compatibility, local invocation permissions and candidate accuracy remain to be
+measured by the explicit paid run commands. The Streamlit evaluation screen
+remains deferred.
+
+## Direct OpenAI and Anthropic evaluation — complete
+
+Add optional direct providers for GPT-6 Luna and Claude Haiku 5.5 using the same
+v4 prompt, plain-text-plus-image inputs, immutable snapshots and fiscal v2 scoring.
+Document environment credentials in the existing `.env.example`; do not read or
+change real keys. Provider requests use native structured outputs, with the
+original full contract still enforced locally. Test offline with mocked HTTP;
+no live inference is part of implementation.
+
+Handoff (2026-10-22): complete. `evaluation/direct.py` supplies direct OpenAI
+Responses and Anthropic Messages adapters through `provider: "openai"` and
+`provider: "anthropic"`. Optional SDK extras are OpenAI >=2.54,<3 and Anthropic
+>=1.17,<2; the validated local versions are 2.54.0 and 1.17.0. Model configs are
+`configs/openai-luna-6-prompt-v4.json` (`gpt-6-luna`) and
+`configs/anthropic-haiku-5-5-prompt-v4.json` (`claude-haiku-5-5`). Both retain the
+v4 prompt, plain-text HTML plus original manifest images, fiscal v2 scoring,
+4096 output tokens, medium reasoning/effort and a 120-second per-attempt timeout.
+OpenAI pins Standard, store false, disabled truncation and implicit 30-minute
+caching. Anthropic pins global inference, Standard speed/tier and adaptive
+thinking. Each SDK reuses one client with at most two attempts per filing, closes
+it after the run, and never executes tools, repairs output or retries with a
+different prompt/budget. Native endpoints are explicit and not overridden from
+environment base URLs.
+
+`extractor.py` validates new provider configs without SDK initialization;
+`runner.py` freezes the exact provider-compatible output schema/version before
+inference, dispatches the provider, records SDK/HTTP library versions and retains
+existing source/input integrity checks and publication. OpenAI's unsupported
+conditional schema keywords become quarter/annual unions; Anthropic's unsupported
+fiscal-year numeric bounds remain described remotely and enforced by the original
+full local schema. Other string/period rules remain in the transport schema.
+Source schemas, golden labels and strict local validation/scoring are unchanged.
+`bedrock.py` exposes its existing pricing validator for reuse without changing
+Bedrock requests or rates. All HTML modes and conservative source bounds reuse
+existing SDK-independent preparation; original image bytes are base64-encoded,
+not resized or re-encoded.
+
+Only the selected provider's OPENAI_API_KEY or ANTHROPIC_API_KEY is required;
+optional ANTHROPIC_WORKSPACE_ID supports keys without workspace scope. The existing
+`.env.example` documents these exact names and explicit shell export. The real
+`.env` was neither read nor changed; automatic dotenv loading is still absent.
+Secrets are never config fields, prompts, run metadata or SDK error messages.
+Offline saved-prediction scoring requires neither credentials nor a client.
+Successful native bodies remain in `.provider.json`; normalized usage retains
+native `providerUsage`, separates OpenAI inclusive cache counts, retains Anthropic
+separate cache counts, and counts reasoning output exactly once. Missing/invalid
+usage leaves cost unknown. Billed usage survives invalid/refused/truncated output.
+Both configs pin current global Standard rates; Luna has a 272K prompt threshold
+with 2x input/cache and 1.5x output, Haiku a 100K threshold with 5x all rates.
+README supplies installation, environment setup, run/compare commands, transport
+schema semantics and operational limitations, with official pricing references.
+
+Validation: predecessor suite 445 passed; final **492 tests passed**, including
+47 new direct-provider checks. Real SDKs use synthetic HTTP transports with
+network connections blocked. Tests cover text and exact image bytes, structured
+request schemas/settings, cache/reasoning usage, per-request pricing thresholds,
+malformed/fenced/duplicate JSON, invalid labels, refusal/truncation, sanitized
+authentication errors, changed frozen schemas/sources, client reuse/closure,
+input preservation, complete run inventories, comparable runs, missing keys,
+no automatic dotenv loading, pinned endpoints and offline rescoring. Compileall,
+import isolation, `pip check` and whitespace checks passed. The isolated wheel
+built with network access for temporary build dependencies; its direct module
+matches source, SDK extra constraints are included, and extracted-wheel imports
+plus the fiscal schema passed outside the source tree without initializing any
+provider SDK. Existing Bedrock/UI checks remain passing. No real data/catalog,
+prior run, AWS resource, sibling repository or secret was modified. Live direct
+account access and model accuracy still require explicit operator runs. Provider
+request/context limits may be stricter than shared source bounds, and unknown
+retry charges are not established by cost estimates. The evaluation UI stays
+deferred.
+
+## Direct Anthropic maintenance — Haiku rejects speed — complete
+
+Operator run `20261022T232238Z-2ae9a23b` returned HTTP 400 on all 13 cases in
+7.34 seconds, with no reported usage. A single replay of TSM into a temporary
+directory reproduced the provider error: Haiku 5.5 does not support the `speed`
+parameter. Remove `speed: "standard"` instead of changing credentials or the
+prompt/schema. Add an HTTP-request regression and safe static error hints for
+known unsupported-speed, workspace-scope and credit-balance failures.
+
+Handoff (2026-10-22): `evaluation/direct.py` now omits `speed` from Anthropic
+Messages requests; the provider default applies. No model/prompt/schema/pricing
+or golden data changes were needed. `request_error()` retains only static
+diagnostic hints and a confined provider request ID. Raw SDK messages, bodies,
+headers and credentials are still never persisted. Unknown errors keep the
+generic status/type message. `tests/test_evaluation_direct.py` asserts absence
+of speed in the actual SDK-serialized request, tests known diagnostic categories,
+and rejects arbitrary request IDs/error-body text. README documents the failure
+and unchanged rerun command.
+
+Validation: **498 tests passed**, including 53 direct-provider tests. Compileall,
+`pip check`, whitespace checks and the isolated wheel build passed. One TSM replay
+against Anthropic reproduced HTTP 400 and identified the unsupported speed field;
+one replay after the fix completed in 3.06 seconds with TWD `29.43` and USD `4.60`
+for FY2026 Q3 and an empty adjusted array, valid against the unchanged fiscal
+schema. Provider usage: 5,972 input / 299 output tokens; known estimated cost
+`$0.0007467`. Replays copied only frozen label-free inputs into temporary
+directories, removed afterward. Diagnostic output redacted keys and did not
+print headers. The failed and successful full operator run inventories were
+verified unchanged; there was no full-job rerun, golden-label save or catalog
+write. The original failed Haiku run remains historical evidence. A fresh full
+Haiku run is the next operator action; the one-filing check does not establish
+whole-sample accuracy. The operator's separate Luna run
+`20261022T232136Z-eea4d640` already completed with all 20 targets correct and
+13/13 exact filings, 51.45 seconds and `$0.054453210` known estimated cost.
+
+## Experiment report consolidation — complete
+
+Handoff (2026-10-22): added `docs/MODEL_EXPERIMENT_REPORT.md` at the user's request.
+It covers all 18 saved full-bundle runs, separates legacy and fiscal contracts,
+and includes performance, token/cache, cost-basis and exact run-ID tables.
+Sonnet/Mistral/Qwen costs are explicit post-hoc calculations; missing request
+usage remains unknown. Luna repeatability and caching, Haiku's CMC price threshold,
+and provider/output failures are explained. README links/statuses and the earlier
+Nova report now point to the complete record. No configs, prompts, runtime code,
+golden data, saved run artifacts or catalog outputs were changed for this report.
+
+Validation: all 18 run integrity inventories and fiscal revision/membership/policy
+compatibility verified read-only; 36 metric rows, cost arithmetic, all run IDs
+and local Markdown links checked against saved artifacts. **498 tests passed**;
+`git diff --check` passed. This was a documentation-only change; no new tests
+or live provider calls were needed.
 
 ## Cleanup baseline
 

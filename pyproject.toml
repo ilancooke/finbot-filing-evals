@@ -17,6 +17,8 @@ finbot-eval-eps = "finbot_filing_evals.evaluation.cli:main"
 dev = ["pytest>=8,<10"]
 eval = ["pyarrow>=19"]
 bedrock = ["boto3>=1.42,<2", "html5lib>=1.1,<2", "Pillow>=12,<13"]
+openai = ["openai>=2.54,<3", "html5lib>=1.1,<2", "Pillow>=12,<13"]
+anthropic = ["anthropic>=1.17,<2", "html5lib>=1.1,<2", "Pillow>=12,<13"]
 review = [
     "Pillow>=12,<13",
     "streamlit>=1.50,<2", "pandas>=2.2,<4", "pyarrow>=19",

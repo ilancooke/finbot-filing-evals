@@ -47,7 +47,11 @@ def validate_config(config):
     tokens = settings.get('max_output_tokens', 4096)
     if type(tokens) is not int or not 1 <= tokens <= 128000:
         raise ReviewError('max_output_tokens must be an integer from 1 to 128000.')
-    pricing = config.get('pricing')
+    validate_pricing(config.get('pricing'))
+
+
+def validate_pricing(pricing):
+    """Validate the shared, pinned token-rate table without loading a provider SDK."""
     if pricing is not None:
         if not isinstance(pricing, dict) or set(pricing) != {*RATE_FIELDS, *MULTIPLIERS, 'long_context_threshold', 'source_url', 'as_of'}:
             raise ReviewError('Pricing must include all documented rates, threshold, multipliers, source_url and as_of.')

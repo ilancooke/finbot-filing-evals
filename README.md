@@ -5,13 +5,15 @@ collected by `finbot-filings`, correcting reported/adjusted diluted EPS labels,
 and confirming a golden dataset. A separate CLI evaluates EPS extractors against
 that human-reviewed dataset and compares saved runs.
 
-**Evaluation:** The recommended baseline is Amazon Nova 2 Lite through Bedrock
-with the **v4 prompt, plain-text HTML extraction and original images**. It gave the
-best observed accuracy/cost results in the reviewed sample. Raw/cleaned HTML and
-other prompts remain available for reproducible experiments. Runs freeze reviewed
+**Evaluation:** Luna 6 through the direct OpenAI API matched all 20 targets in
+three runs and is the leading candidate for broader testing. Use the **v4 prompt,
+plain-text HTML extraction and original images**; Nova 2 Lite through Bedrock
+remains the historical baseline. See the [experiment report](docs/MODEL_EXPERIMENT_REPORT.md)
+for accuracy, runtime, token usage, cache effects and estimated costs across all
+18 saved runs. Raw/cleaned HTML and other prompts remain available. Runs freeze reviewed
 inputs and write Markdown, JSON and Parquet reports. See
 [EPS extraction evaluation](#eps-extraction-evaluation) and the
-[experiment results](docs/EVALUATION_EXPERIMENTS.md).
+[earlier Nova tuning record](docs/EVALUATION_EXPERIMENTS.md).
 The Streamlit evaluation screen is a future roadmap item; the review UI is unchanged.
 
 ![EPS review UI showing saved filing progress, an ASML document, the EPS editor and review notes](docs/images/eps-review-ui.png)
@@ -49,7 +51,7 @@ Use local files; no model calls, AWS access, downloads, sibling-package imports,
 or changes to `finbot-dashboard` are needed for the review UI. Catalog refresh
 uses the sibling repository's CLI as a subprocess, without importing its code.
 Evaluation code belongs under `src/finbot_filing_evals/evaluation/`. Its explicit
-CLI runs may call Bedrock; opening the review app never imports the provider SDK
+CLI runs may call Bedrock, OpenAI or Anthropic; opening the review app never imports a provider SDK
 or invokes a model. Evaluation does not recreate the former screenshot pipeline.
 
 ## EPS extraction evaluation
@@ -108,9 +110,9 @@ not the global-routing rates. Nova's config uses multipliers of 1 throughout its
 1M-token context window; it does not inherit Luna's long-context surcharge.
 Rates remain estimates based on provider-reported usage and the pinned table.
 
-### Recommended baseline and experiment results
+### Reference baseline and experiment results
 
-Use [configs/bedrock-nova-2-lite-prompt-v4.json](configs/bedrock-nova-2-lite-prompt-v4.json)
+The historical Nova reference is [configs/bedrock-nova-2-lite-prompt-v4.json](configs/bedrock-nova-2-lite-prompt-v4.json)
 with [prompts/eps-v4.txt](prompts/eps-v4.txt). Omitted `html_input` means
 `plain_text`; original collected images are also sent. The prompt targets one
 current fiscal quarter or complete fiscal year, excludes partial-year multiquarter
@@ -134,8 +136,11 @@ these results support the current baseline choice, not a claim of guaranteed
 accuracy or performance on unseen filings. The same small sample was used for
 prompt tuning, with no held-out validation.
 
-See [the experiment record](docs/EVALUATION_EXPERIMENTS.md) for exact run IDs,
-prompt comparisons, remaining failures and reproduction/comparison commands.
+See the [full experiment report](docs/MODEL_EXPERIMENT_REPORT.md) for subsequent
+model comparisons, including three perfect Luna runs and perfect Sonnet, Kimi
+and Haiku runs. Its cost tables distinguish cache hits, partial usage and
+post-hoc estimates. The [earlier Nova record](docs/EVALUATION_EXPERIMENTS.md)
+retains detailed prompt/input comparisons and failure analysis.
 The older `configs/bedrock-nova-2-lite.json` still selects the **v2 prompt**;
 its filename has been retained for reproducibility and does not select v4.
 
@@ -143,13 +148,168 @@ its filename has been retained for reproducibility and does not select v4.
 
 | Config under `configs/` | Prompt | HTML input | Role |
 | --- | --- | --- | --- |
-| `bedrock-nova-2-lite-prompt-v4.json` | v4 | Plain text | Recommended baseline |
+| `bedrock-nova-2-lite-prompt-v4.json` | v4 | Plain text | Historical reference baseline |
 | `bedrock-nova-2-lite-prompt-v4-raw-html.json` | v4 | Entire HTML | Evaluated experiment; higher observed cost/lower F1 |
 | `bedrock-nova-2-lite-prompt-v4-cleaned-html.json` | v4 | Cleaned HTML | Evaluated experiment; did not outperform plain text |
 | `bedrock-nova-2-lite-prompt-v5.json` | v5 | Plain text | Evaluated prompt experiment; no observed improvement |
 | `bedrock-nova-2-lite-prompt-v3.json` | v3 | Plain text | Historical prompt experiment |
 | `bedrock-nova-2-lite.json` | v2 | Plain text | Historical fiscal v2 baseline |
 | `bedrock-luna.json` | v2 | Plain text | Separate model config; requires account access |
+| `bedrock-claude-sonnet-4-6-prompt-v4.json` | v4 | Plain text | Evaluated: 100% F1, 13/13 exact filings |
+| `bedrock-kimi-k3-prompt-v4.json` | v4 | Plain text | Evaluated: 100% F1, 13/13 exact filings |
+| `bedrock-mistral-large-3-prompt-v4.json` | v4 | Plain text | Evaluated: all requests/output parsing failed |
+| `bedrock-qwen3-vl-235b-prompt-v4.json` | v4 | Plain text | Evaluated: 78.8% F1, 9/13 exact filings |
+| `openai-luna-6-prompt-v4.json` | v4 | Plain text | Direct OpenAI Responses; requires OPENAI_API_KEY |
+| `anthropic-haiku-5-5-prompt-v4.json` | v4 | Plain text | Direct Anthropic Messages; requires ANTHROPIC_API_KEY |
+
+### Direct OpenAI and Anthropic APIs
+
+Install the optional direct SDKs in this repository's environment:
+
+```bash
+.venv/bin/python -m pip install -e '.[dev,review,eval,bedrock,openai,anthropic]'
+```
+
+The maintained credential template is [.env.example](.env.example). Put your real
+keys in the ignored `.env` file at this repository root, preserving any existing
+settings. Use the variable names below; configs contain no keys:
+
+```dotenv
+FINBOT_DATA_ROOT=/Users/ilan/workspace/finbot/data
+OPENAI_API_KEY=your-openai-key
+ANTHROPIC_API_KEY=your-anthropic-key
+# Only for an Anthropic key that is not scoped to a workspace:
+# ANTHROPIC_WORKSPACE_ID=your-workspace-id
+```
+
+The app and CLI deliberately do not parse `.env`. Export its values into the
+same shell before running the explicit **paid inference** commands:
+
+```bash
+set -a
+source .env
+set +a
+
+.venv/bin/finbot-eval-eps run --config configs/openai-luna-6-prompt-v4.json
+.venv/bin/finbot-eval-eps run --config configs/anthropic-haiku-5-5-prompt-v4.json
+```
+
+Observed direct-provider results are recorded in the
+[experiment report](docs/MODEL_EXPERIMENT_REPORT.md): Luna matched 13/13 filings
+on three runs; Haiku matched 13/13 after the unsupported-speed fix.
+
+Only the selected provider's key is required. Missing/blank keys stop before
+inference with the variable name in the error. Offline `--predictions` scoring
+requires neither keys nor a provider client. Both providers reuse the same reviewed
+snapshots, v4 prompt, original images, HTML input modes and fiscal v2 scoring.
+Legacy v1 labels are not supported by these direct adapters. Use the existing
+`compare` command with the saved Nova or other compatible fiscal v2 run.
+
+OpenAI uses `gpt-6-luna` on the Responses API with strict JSON-schema output,
+`store: false`, disabled input truncation, Standard processing, and implicit
+30-minute prompt caching. Anthropic uses `claude-haiku-5-5` on Messages with
+`output_config.format`, adaptive thinking, the Standard tier and explicit global
+inference geography. The two configs use 4096 maximum output tokens, medium
+reasoning/effort and a 120-second SDK timeout per attempt. SDK retries allow at
+most two attempts; there are no model-based repairs, automatic continuation calls,
+web searches or tool execution. Native endpoints are pinned; the adapters do not
+honor OPENAI_BASE_URL or ANTHROPIC_BASE_URL overrides. The SDKs are imported lazily.
+No live direct-provider access or accuracy is claimed by offline tests.
+Haiku 5.5 rejects the `speed` parameter, including `speed: "standard"`; the adapter
+omits it and uses the model's default speed. If all filings immediately return
+HTTP 400 without usage, inspect the report before rerunning. Known unsupported-speed,
+workspace-scope and credit-balance failures include static diagnostic hints; a
+valid provider request ID is retained for support. Raw error messages/headers are
+never written. Set ANTHROPIC_WORKSPACE_ID only when your key requires a workspace.
+
+The source fiscal schema contains conditional keywords that OpenAI structured
+outputs do not support. A deterministic transport schema replaces those rules
+with quarterly/annual unions, including quarter 1–4 versus annual null. Anthropic
+does not support numerical bounds, so its fiscal-year bounds are described in the
+transport schema and still checked locally. Each request freezes the exact
+`output_schema` and compiler version alongside the unchanged original schema.
+The full original schema, duplicate checks and exact scoring remain authoritative.
+Refusals, incomplete responses, unexpected blocks, fenced JSON, wrong field names
+and invalid observations remain extraction errors, even with billed token usage.
+
+Both configs pin public global Standard rates checked on 2026-10-22: $0.10 input,
+$0.50 output, $0.01 cache-read and $0.125 cache-write per million tokens. Luna's
+30-minute cache-write price and Haiku's 5-minute cache-write price happen to match;
+the adapters do not request explicit Anthropic caching. Luna applies 2x input/cache
+and 1.5x output rates above 272,000 prompt tokens. Haiku applies 5x all token rates
+above 100,000 prompt tokens. Thresholds apply separately per request and include
+cache reads/writes. See [Luna pricing](https://developers.openai.com/api/docs/models/gpt-6-luna)
+and [Haiku pricing](https://platform.claude.com/docs/en/models/haiku-5-5/overview).
+Global routing differs from the US profiles in the Bedrock configs.
+
+Native successful API bodies are saved as `responses/*.provider.json`; request
+headers and SDK exception bodies/messages are not saved. Normalized usage retains
+`providerUsage` plus the existing `inputTokens`, `outputTokens` and cache counters.
+OpenAI's total input count includes cached/written tokens, so those are separated
+before applying rates; Anthropic reports them separately already. Reasoning tokens
+are included in billed output, without adding them twice. Reports currently show
+ordinary input tokens; inspect cache counters/native usage for total prompt size.
+Missing usage leaves costs unknown. Known usage/cost survives output-validation
+failures. Estimates exclude unknown retry charges and do not establish billing.
+The shared source checks retain their 20-image/64-MiB bounds; providers can impose
+stricter image/context/request-size limits, which remain visible errors.
+
+### Alternative model experiments
+
+Four configs reuse the existing Converse adapter, unchanged v4 prompt, original
+images, fiscal v2 targets and exact scoring. All use `us-east-1`, 4096 maximum
+output tokens and a 120-second socket read timeout. Sonnet 4.6 and Kimi K3 use US
+inference profiles; Mistral Large 3 and Qwen3 VL use direct regional model IDs.
+Read-only account checks on 2026-10-22 returned available authorization,
+entitlement, agreement and regional status for all four. These are account flags,
+not invocation tests or verification of the local CLI identity's IAM permissions.
+Subsequent operator runs are summarized in the
+[experiment report](docs/MODEL_EXPERIMENT_REPORT.md), including provider and
+output-validation failures.
+
+Sonnet uses the same forced `submit_eps` tool mode as Nova. The other three use
+the adapter's strict JSON text mode because named forced-tool support was not
+established for them. Fenced JSON, extra prose and malformed outputs remain
+errors; there is no fallback, repair or second call. Comparisons therefore measure
+the complete extractor configuration, including response mode and provider-default
+reasoning. Kimi K3 reasons by default at maximum effort; a 4096-token output budget
+can be exhausted by reasoning. A later budget change should use a new config and
+be recorded as another experiment. Its documented multi-turn Converse limitations
+do not apply to this single-turn workflow; HTML is sent as text, not a document
+block. See the [Kimi model card](https://docs.aws.amazon.com/bedrock/latest/userguide/model-card-moonshot-ai-kimi-k3.html).
+
+Run any command explicitly when ready for **paid inference**; each evaluates the
+entire reviewed bundle and writes a separate run directory:
+
+```bash
+.venv/bin/finbot-eval-eps run --config configs/bedrock-claude-sonnet-4-6-prompt-v4.json
+.venv/bin/finbot-eval-eps run --config configs/bedrock-kimi-k3-prompt-v4.json
+.venv/bin/finbot-eval-eps run --config configs/bedrock-mistral-large-3-prompt-v4.json
+.venv/bin/finbot-eval-eps run --config configs/bedrock-qwen3-vl-235b-prompt-v4.json
+.venv/bin/finbot-eval-eps compare /path/to/saved-v4-nova-run /path/to/new-model-run
+```
+
+Inspect errors before interpreting scores. Provider context/image limits can differ;
+the adapter never drops attachments or truncates inputs to make a request fit.
+Use the same reviewed revision as the Nova run; comparison refuses changed targets.
+Token counts and runtime are reported for every candidate when available.
+
+Only Kimi has a complete pinned pricing table: US standard input/output/cache-read/
+30-minute cache-write rates are $3.30/$16.50/$0.33/$4.125 per million tokens, with
+no long-context multiplier. AWS Price List catalog `20261016210806`, effective
+2026-10-01, and the model card agreed on 2026-10-22. SKUs, respectively:
+`EKR93TW44YSY44HS`, `Y6B3DXYEC9FPZ8SU`, `U2R5H9Q9G6W69JFV`,
+`53NDJ4U8Z4EBTVUK`. These rates apply to the configured US profile, not global routing.
+The other three configs deliberately omit optional `pricing`, so their cost is
+unknown rather than zero. Sonnet's complete rates were not verified from the
+Price List API; Mistral/Qwen input/output rates were found but their complete
+cache-aware schedules remain unverified. Do not copy Nova rates or assume that
+missing cache rates mean free cache tokens. The experiment report derives
+post-hoc estimates for known usage using documented rates, leaving missing usage
+unknown. Pin verified complete tables before relying on automatic estimates in
+future runs. Estimates never establish actual billing.
+
+### HTML input modes
 
 Bedrock's top-level `html_input` accepts `plain_text` (default), `raw_html` or
 `cleaned_html`. Nova's output mode remains `tool` in every included Nova config.
@@ -298,7 +458,7 @@ target_projection.json         # projection counts and excluded cumulative/YTD r
 extractor.json, prompt.txt     # exact configuration and prompt
 inputs/<case_id>/              # label-free request and copied original documents
 responses/<case_id>.json       # normalized raw response (or command stdout)
-responses/*.provider.json      # native successful Bedrock API responses
+responses/*.provider.json      # native successful provider API responses
 results.json                   # summary, predictions, usage and all differences
 predictions.json               # versioned envelope for offline rescoring
 cases.parquet, cases.metadata.json
@@ -387,7 +547,7 @@ an argument list without a shell; stdout is
 retained (up to 4 MiB) and stderr is not logged. Use absolute script paths.
 The request omits labels/notes and the shared-root environment variables are
 removed, but the command has ordinary OS access: it must be trusted. The command
-timeout applies to the invocation. OpenAI-direct is not implemented. Nova 2 Lite
+timeout applies to the invocation. Direct OpenAI/Anthropic use the adapters above. Nova 2 Lite
 uses the included Bedrock configuration and the same shared adapter as Luna.
 
 Evaluation checks (offline synthetic fixtures and mocked Bedrock):
@@ -842,7 +1002,10 @@ The evaluation tests cover deterministic scoring, reviewed-input gating, immutab
 snapshots, command/Bedrock failures, raw responses, pricing, reports and compatible
 run comparison, fiscal target projection, cumulative exclusions and legacy/v2
 separation. Install `.[dev,review,eval,bedrock]` to run every check, including
-the mocked Bedrock and botocore Stubber tests. No live model calls are required.
+the mocked Bedrock and botocore Stubber tests. Add the `openai,anthropic` extras
+for direct-provider tests, which exercise the real SDKs through mocked HTTP
+transports, including image/schema requests, pricing, errors and offline rescoring.
+No live model calls are required.
 
 Compile and verify the installed package:
 

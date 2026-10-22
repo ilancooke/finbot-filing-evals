@@ -1,0 +1,14 @@
+{
+  "provider": "bedrock",
+  "name": "claude-sonnet-4-6-bedrock-prompt-v4",
+  "model": "us.anthropic.claude-sonnet-4-6",
+  "region": "us-east-1",
+  "prompt_file": "../prompts/eps-v4.txt",
+  "html_input": "plain_text",
+  "settings": {
+    "max_output_tokens": 4096,
+    "output_mode": "tool"
+  },
+  "timeout_seconds": 120,
+  "label_contract": "earnings_eps.fiscal.v2"
+}

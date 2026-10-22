@@ -29,16 +29,19 @@ def load_config(path):
             raise ReviewError(f"Extractor config requires a nonblank {field}.")
     require_contract(config.get('label_contract', LEGACY_CONTRACT))
     provider = config.get('provider', 'command')
-    if provider not in {'command', 'bedrock'}:
-        raise ReviewError('Extractor provider must be command or bedrock.')
+    if provider not in {'command', 'bedrock', 'openai', 'anthropic'}:
+        raise ReviewError('Extractor provider must be command, bedrock, openai or anthropic.')
     if provider == 'command':
         if 'html_input' in config:
             raise ReviewError('html_input is supported only by the Bedrock adapter.')
         command = config.get("command")
         if not isinstance(command, list) or not command or any(not isinstance(arg, str) or not arg for arg in command):
             raise ReviewError("Extractor command must be a nonempty JSON argument list.")
-    else:
+    elif provider == 'bedrock':
         from .bedrock import validate_config
+        validate_config(config)
+    else:
+        from .direct import validate_config
         validate_config(config)
     timeout = config.get("timeout_seconds", 120)
     if type(timeout) not in (float, int) or not math.isfinite(timeout) or not 0 < timeout <= 3600:

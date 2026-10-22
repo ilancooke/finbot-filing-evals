@@ -1,6 +1,7 @@
 """Freeze reviewed inputs before extraction; never write to a golden bundle."""
 
 from datetime import datetime, timezone
+from contextlib import ExitStack
 import json
 from importlib.metadata import PackageNotFoundError, version
 import platform
@@ -25,7 +26,7 @@ def now():
 
 def dependency_versions():
     result = {}
-    for name in ('jsonschema', 'pyarrow', 'boto3', 'botocore', 'html5lib', 'Pillow'):
+    for name in ('jsonschema', 'pyarrow', 'boto3', 'botocore', 'html5lib', 'Pillow', 'openai', 'anthropic', 'httpx', 'httpx2'):
         try:
             result[name] = version(name)
         except PackageNotFoundError:
@@ -104,7 +105,7 @@ def run(dataset_root, output, config_path, *, predictions=None, progress=None):
         raise ReviewError('Evaluation output already exists; choose a new directory.')
     output.parent.mkdir(parents=True, exist_ok=True)
     started = now()
-    with tempfile.TemporaryDirectory(prefix='.eps-eval-', dir=output.parent) as temp:
+    with tempfile.TemporaryDirectory(prefix='.eps-eval-', dir=output.parent) as temp, ExitStack() as clients:
         stage = Path(temp) / 'run'
         stage.mkdir()
         dataset, revision = freeze(root, stage, contract=contract)
@@ -117,20 +118,31 @@ def run(dataset_root, output, config_path, *, predictions=None, progress=None):
             request_path = stage / 'inputs' / case.case_id / 'request.json'
             request = decode(request_path.read_bytes())
             request.update(prompt=prompt, model=config['model'], settings=config.get('settings', {}))
-            if config.get('provider', 'command') == 'bedrock':
+            if config.get('provider', 'command') in {'bedrock', 'openai', 'anthropic'}:
                 request['html_input'] = config.get('html_input', 'plain_text')
+            if config.get('provider') in {'openai', 'anthropic'}:
+                from .direct import output_schema
+                request['output_schema'] = output_schema(request['label_schema'], config['provider'])
+                request['output_schema_version'] = 'eps_fiscal_structured.v1'
             write_json(request_path, request)
         frozen_inputs = inventory(stage / 'inputs')
         frozen_golden = digest((stage / 'golden.json').read_bytes())
         frozen_evidence = {path.name: digest(path.read_bytes()) for path in stage.iterdir() if path.is_file()}
         provider = config.get('provider', 'command')
-        bedrock = None
+        adapter = None
         preprocessing = 'external command'
         if provider == 'bedrock':
             from .bedrock import BedrockExtractor, preprocessing_description
             preprocessing = preprocessing_description(config)
             if saved is None:
-                bedrock = BedrockExtractor(config)
+                adapter = BedrockExtractor(config)
+        elif provider in {'openai', 'anthropic'}:
+            from .direct import DirectExtractor
+            from .bedrock import preprocessing_description
+            preprocessing = preprocessing_description(config)
+            if saved is None:
+                adapter = DirectExtractor(config)
+                clients.callback(adapter.close)
         results = []
         for index, case in enumerate(dataset.cases, 1):
             if progress:
@@ -140,7 +152,7 @@ def run(dataset_root, output, config_path, *, predictions=None, progress=None):
             raw_path = stage / 'responses' / f'{case.case_id}.json'
             raw_path.parent.mkdir(exist_ok=True)
             if saved is None:
-                raw, duration, error = (bedrock.invoke(request_path, workdir, raw_path) if bedrock else
+                raw, duration, error = (adapter.invoke(request_path, workdir, raw_path) if adapter else
                                         invoke(config, request_path, workdir, raw_path))
             else:
                 write_json(raw_path, saved[case.case_id])
