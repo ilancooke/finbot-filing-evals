@@ -39,6 +39,51 @@ def _bundle_hashes(root):
             for p in root.rglob("*") if p.is_file()}
 
 
+def test_collected_page_images_survive_review_saves_without_becoming_attachments(monkeypatch, dataset_root, case_file):
+    import json
+    from io import BytesIO
+    from PIL import Image
+    from conftest import prepare_bundle, save_json, snapshot
+    from finbot_filing_evals.review.dataset import load_dataset
+    from finbot_filing_evals.review.persistence import verify_bundle
+
+    case = json.loads(case_file.read_text())
+    output = BytesIO()
+    Image.new('RGB', (600, 400), 'white').save(output, 'PNG')
+    image = case_file.parent / 'documents/page001.png'
+    image.write_bytes(output.getvalue())
+    identity = case['filing']['filing_id'] + '/page001.png'
+    case['filing']['artifacts'].append(dict(artifact_id=identity, filename=image.name,
+        s3_uri='s3://synthetic-fixture/page001.png', size_bytes=len(output.getvalue()),
+        document_type='GRAPHIC', content_type='image/png'))
+    case['documents'][identity] = dict(path=image.relative_to(dataset_root).as_posix(),
+        sha256=hashlib.sha256(output.getvalue()).hexdigest())
+    release = next(a for a in case['filing']['artifacts'] if a['filename'] == 'release.htm')
+    source = dataset_root / case['documents'][release['artifact_id']]['path']
+    source.write_bytes(b'<img src="page001.png"><font style="font-size:1pt;color:white">Quarter EPS 4.60</font>')
+    release['size_bytes'] = source.stat().st_size
+    case['documents'][release['artifact_id']]['sha256'] = hashlib.sha256(source.read_bytes()).hexdigest()
+    snapshot(case['filing'])
+    save_json(case_file, case)
+    manifest = json.loads((dataset_root / 'dataset.json').read_text())
+    manifest['document_count'] += 1
+    save_json(dataset_root / 'dataset.json', manifest)
+    prepare_bundle(dataset_root)
+    before = {source: source.read_bytes(), image: image.read_bytes()}
+    app = _open_app(monkeypatch, dataset_root)
+    assert not app.exception and not app.error
+    assert all('page001.png' not in option for box in app.selectbox for option in box.options)
+    assert 'data:image/png;base64,' in app.get('iframe')[0].proto.srcdoc
+    _edit(app, dataset_root, edits={0: {'Value': '5.250'}})
+    _button(app, 'Save changes').click().run()
+    assert not app.exception and not app.error
+    verify_bundle(load_dataset(dataset_root))
+    assert all(path.read_bytes() == body for path, body in before.items())
+    restarted = _open_app(monkeypatch, dataset_root)
+    assert not restarted.exception and not restarted.error
+    assert 'data:image/png;base64,' in restarted.get('iframe')[0].proto.srcdoc
+
+
 def _draft(app, root):
     namespace = hashlib.sha256(str(root.resolve()).encode()).hexdigest()[:16]
     case_id = app.session_state[f"{namespace}:active_filing"]

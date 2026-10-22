@@ -11,7 +11,7 @@ from .errors import ReviewError
 from .exports import review_state
 from .persistence import confirm_case, save_changes, retry_synchronization, synchronization_pending
 from .session import EditorDraft, NavigationGuard, adjacent_case
-from .viewer import initial_attachment, plain_text_preview, viewer_frame
+from .viewer import case_images, initial_attachment, plain_text_preview, viewer_frame
 
 
 def _navigation(namespace: str) -> NavigationGuard:
@@ -181,11 +181,12 @@ def _show_dataset(dataset: ReviewDataset, config: ReviewConfig, *, pending: bool
     left, right = st.columns([3, 2])
     with left:
         st.subheader("Document")
-        documents = {document.artifact_id: document for document in case.documents}
+        documents = {document.artifact_id: document for document in case.documents
+                     if not document.filename.lower().endswith((".jpg", ".jpeg", ".png", ".gif"))}
         # Keep a non-widget state key: Streamlit removes hidden widget state
         # when another filing is selected, even with case-specific widget keys.
         selection_key = f"{namespace}:{case.case_id}:selected_attachment"
-        saved_attachment = st.session_state.get(selection_key, initial_attachment(case.documents))
+        saved_attachment = st.session_state.get(selection_key, initial_attachment(list(documents.values())))
         options = list(documents)
         artifact_id = st.selectbox(
             "Attachment", options=options,
@@ -198,7 +199,8 @@ def _show_dataset(dataset: ReviewDataset, config: ReviewConfig, *, pending: bool
         raw = document.read_bytes()
         st.caption(
             "Display-only HTML with tables and inline formatting. Scripts, links and external assets "
-            "are disabled; images and stylesheets may be missing. Layout may differ from the original."
+            "are disabled. Collected local page images are displayed; omitted images and stylesheets "
+            "may affect the layout."
         )
         mode = st.radio(
             "Document view", ["Formatted HTML", "Readable text"], horizontal=True,
@@ -207,12 +209,17 @@ def _show_dataset(dataset: ReviewDataset, config: ReviewConfig, *, pending: bool
         if mode == "Formatted HTML":
             # Embed only our wrapper, never raw source. The inner frame has no
             # sandbox permissions, independent of Streamlit's outer frame.
-            if hasattr(st, "iframe"):
-                st.iframe(viewer_frame(raw), height=700)
-            else:  # Compatibility with the supported Streamlit 1.50 releases.
-                import streamlit.components.v1 as components
+            try:
+                wrapper = viewer_frame(raw, images=case_images(case))
+            except ReviewError as exc:
+                st.error(f"Cannot display collected images: {exc} Use Readable text to inspect embedded text.")
+            else:
+                if hasattr(st, "iframe"):
+                    st.iframe(wrapper, height=700)
+                else:  # Compatibility with the supported Streamlit 1.50 releases.
+                    import streamlit.components.v1 as components
 
-                components.html(viewer_frame(raw), height=700, scrolling=False)
+                    components.html(wrapper, height=700, scrolling=False)
         else:
             text = plain_text_preview(raw)
             if text:

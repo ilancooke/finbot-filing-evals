@@ -805,7 +805,78 @@ deliberately unexecuted until an explicitly requested real review save; mocked
 tests verify failures/retry and copies disable it. No roadmap implementation work
 remains; the original labels still await the user's actual human review.
 
+## Maintenance — Tiny text in image-based attachments
+
+Handoff (2026-10-21): complete. Firefox inspection reproduced the blank-looking
+ASML EX-99.3 attachment. Its original HTML references unavailable page images and
+contains a white 1-point transcription, rather than HTML financial tables.
+
+- `review/viewer.py` now exposes nonblank embedded text whose effective inline
+  font size is at most 2px (including equivalent point sizes and zero). Only those
+  elements receive readable 16px text, dark foreground, white background and
+  normal line spacing. Inline importance/order is respected when detecting size;
+  ordinary typography and source files are preserved. Sanitization, CSP and the
+  empty iframe sandbox remain in place. A viewer notice explains the enlargement
+  and missing-image/table-layout limitation. Text fallback is unchanged.
+- `tests/test_review_viewer.py` adds synthetic image/transcript regressions for
+  point/pixel/zero sizes, important declarations, white text, collapsed line
+  spacing, ordinary typography, transcription values and unchanged text fallback.
+- README documents this attachment behavior. No dependencies, label contracts,
+  data files or sibling repositories changed.
+
+Checks: 249 tests passed, including 34 focused viewer tests; compileall,
+`pip check` and `git diff --check` passed. A temporary localhost preview of the
+actual source derivative was visually inspected in Firefox: previously invisible
+page transcriptions were readable. The existing Streamlit process still retained
+the old imported viewer after opening a separate review session, so restart that
+server to load the fix. No Save, Confirm or catalog action was performed.
+
+Limitations: this exposes linear page transcriptions; missing image assets mean
+the original financial-table alignment cannot be restored from this HTML alone.
+The seven implementation steps above remain complete.
+
 ## Boundaries for every step
+
+Maintenance (2026-10-21): supporting raster viewing is implemented alongside the
+upstream selective-image change. `review/viewer.py` resolves only explicitly
+supplied, hash-verified manifest rasters, validates them with Pillow, embeds
+generated data-image URLs under `img-src data:` and retains the empty iframe
+sandbox. Source resource URLs/events remain stripped. Page layout is preserved
+by the image; a collected page's tiny transcript stays unobtrusive. Missing-page
+text still receives the earlier enlargement fallback. `review/app.py` keeps
+supporting assets out of attachment choices while preserving complete source
+membership. README records bounds and the explicit source-refresh requirement.
+Tests cover hostile/missing/corrupt images, partial page availability and a
+complete synthetic image-bearing save/restart with unchanged source hashes.
+Full suite: 253 passed; compileall, pip check and whitespace checks passed.
+The image-bearing wrapper was also inspected in Firefox using a synthetic page
+with EPS rows and quarterly/year-to-date columns; the raster preserved table
+alignment and readable values. Temporary preview server/tab were removed.
+Upstream recovery and migration of the real golden bundle were not performed at
+that validation point; the subsequent maintenance entry below records staging.
+
+Maintenance (2026-10-21): cloud recovery subsequently stored 50 supporting JPEGs
+for ASML/BAC/UNH/CMC and published four complete snapshots. Added the offline
+`review.image_refresh` operator importer. It requires local published manifests,
+native acquisition records and hash-verified images; no AWS dependency, download
+or sibling-package import enters the review UI. It writes only a new staged
+bundle, preserving original source files, EPS values, notes and unrelated cases.
+Changed packages need confirmation again; prior confirmation and provenance are
+archived. Complete acquisition/source exports, Parquet sidecars and integrity are
+regenerated and validated, with raster checks before publishing the staged path.
+Tests cover label-save compatibility, retained history, invalid/altered manifests,
+hashes, corrupt images, symlinks, pending saves and existing destinations.
+The original 13-case/27-document/34-observation bundle was backed up whole with
+matching file hashes. A separate staged bundle has 13 cases, 77 source artifacts
+(27 unchanged HTML plus 50 JPEGs) and the same 34 observations. Canonical replacement
+and catalog refresh remain separate from staging. Full package suite: 266 passed;
+compileall, dependency and whitespace checks passed. Firefox inspection of the
+staged ASML EX-99.3 confirmed that recovered pages and financial table columns are
+visible in the sandbox. No labels were saved or confirmed during inspection.
+Recovery inputs and verification evidence are retained under the shared data
+root's `filing-evals/recovery/supporting-images-20261021` directory, with the
+whole-bundle backup under `filing-evals/backups` and the new copy under
+`filing-evals/staging`.
 
 Keep all implementation in this repository and all generated data outside Git.
 The app is a local single-user workflow, with stale-session protection; do not add

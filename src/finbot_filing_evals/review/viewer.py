@@ -7,6 +7,8 @@ in Streamlit's component frame, which itself permits scripts by default.
 
 from collections.abc import Sequence
 from html import escape
+from base64 import b64encode
+from io import BytesIO
 
 from .dataset import SourceDocument
 
@@ -14,7 +16,7 @@ _TAGS = frozenset("""
     a abbr b bdi bdo blockquote br caption center cite code col colgroup dd del
     details div dl dt em figcaption figure font h1 h2 h3 h4 h5 h6 hr i ins kbd
     li main mark ol p pre q s samp section small span strike strong sub summary
-    sup table tbody td tfoot th thead tr tt u ul var wbr
+    sup table tbody td tfoot th thead tr tt u ul var wbr img
 """.split())
 _DROP_CONTENT = frozenset({
     "head", "script", "style", "iframe", "object", "embed", "template",
@@ -28,6 +30,7 @@ _ATTRIBUTES = {
     "col": ["span", "width"], "colgroup": ["span", "width"],
     "font": ["color", "face", "size"], "ol": ["start", "type"], "li": ["value"],
     "details": ["open"],
+    "img": ["src", "alt", "width", "height"],
 }
 # No backgrounds/images, positioning, hiding, animation, generated content or
 # custom properties. Keep typography and table layout useful for financial data.
@@ -48,7 +51,7 @@ _CSS_PROPERTIES = frozenset("""
 _CSS_FUNCTIONS = {"rgb", "rgba", "hsl", "hsla", "calc", "min", "max", "clamp"}
 _CSP = (
     "default-src 'none'; script-src 'none'; style-src 'unsafe-inline'; "
-    "form-action 'none'; base-uri 'none'"
+    "form-action 'none'; base-uri 'none'; img-src data:"
 )
 _BASE_STYLE = """
     html { color-scheme: light; }
@@ -56,6 +59,7 @@ _BASE_STYLE = """
            font: 16px/1.45 Georgia, serif; overflow-wrap: break-word; }
     table { border-collapse: collapse; } td, th { padding: 2px 4px; }
     pre { white-space: pre-wrap; } a { color: inherit; }
+    img { max-width: 100%; height: auto; }
 """
 
 
@@ -92,7 +96,7 @@ class _InlineStyle:
         ])
 
 
-def _document_body(raw: bytes):
+def _document_body(raw: bytes, images=None):
     import html5lib
 
     # Parsing bytes respects BOM/HTML encoding declarations. UTF-8 is the default
@@ -113,9 +117,15 @@ def _document_body(raw: bytes):
                 parent.remove(child)
             elif tag == "img":
                 alt = child.attrib.get("alt", "").strip()
-                child.tag = "span"
+                source = child.attrib.get("src", "")
+                local = (images or {}).get(source)
                 child.attrib.clear()
-                child.text = f" [Image: {alt}] " if alt else ""
+                if local is not None:
+                    child.attrib.update(src=local, alt=alt or "Collected filing page or graphic")
+                else:
+                    child.tag = "span"
+                    child.attrib["data-missing-image"] = "true"
+                    child.text = f" [Image: {alt}] " if alt else ""
             else:
                 clean(child)
 
@@ -123,31 +133,139 @@ def _document_body(raw: bytes):
     return root.find("body")
 
 
-def sanitized_html(raw: bytes) -> str:
+def _enlarge_embedded_text(body) -> bool:
+    """Reveal tiny image-page transcripts without overriding ordinary typography."""
+    import tinycss2
+
+    enlarged = False
+    page_image_available = False
+    for element in body.iter():
+        if element.tag == "img":
+            page_image_available = True
+        elif element.tag == "hr" or element.attrib.get("data-missing-image"):
+            page_image_available = False
+        declarations = tinycss2.parse_declaration_list(
+            element.attrib.get("style", ""), skip_comments=True, skip_whitespace=True,
+        )
+        sizes = [item for item in declarations
+                 if item.type == "declaration" and item.lower_name == "font-size"]
+        if not sizes:
+            continue
+        # The last declaration at the highest importance wins in inline CSS.
+        size = sorted(sizes, key=lambda item: item.important)[-1]
+        tokens = [token for token in size.value if token.type != "whitespace"]
+        if len(tokens) != 1:
+            continue
+        token = tokens[0]
+        pixels = None
+        if token.type == "dimension":
+            if token.lower_unit == "px":
+                pixels = token.value
+            elif token.lower_unit == "pt":
+                pixels = token.value * 4 / 3
+        elif token.type == "number" and token.value == 0:
+            pixels = 0
+        if pixels is None or not 0 <= pixels <= 2 or not "".join(element.itertext()).strip():
+            continue
+        if page_image_available:
+            continue  # Keep a collected page's hidden transcription unobtrusive.
+        # Image-backed filings can include a white 1pt transcript. The images
+        # are unavailable, so expose that text on the viewer's white background.
+        element.attrib.pop("size", None)
+        element.attrib["style"] = tinycss2.serialize([
+            item for item in declarations
+            if item.type == "declaration" and item.lower_name not in {
+                "font-size", "color", "background-color", "line-height",
+            }
+        ]) + "font-size:16px!important;color:#202124!important;background-color:white!important;line-height:1.45!important;"
+        enlarged = True
+    return enlarged
+
+
+def _image_data(images):
+    """Only verified manifest bytes become image URLs; source URLs never survive."""
+    from PIL import Image
+    from .errors import ReviewError
+    import warnings
+
+    bodies = set(images.values())
+    if len(bodies) > 128 or sum(map(len, bodies)) > 64 * 1024 * 1024:
+        raise ReviewError("Collected images exceed the viewer's count or byte limit.")
+    result, encoded = {}, {}
+    for source, body in images.items():
+        if body in encoded:
+            result[source] = encoded[body]
+            continue
+        try:
+            with warnings.catch_warnings():
+                warnings.simplefilter("error", Image.DecompressionBombWarning)
+                with Image.open(BytesIO(body)) as picture:
+                    format = picture.format.lower()
+                    if (format not in {"jpeg", "png", "gif"} or max(picture.size) > 8000
+                            or len(body) > 8 * 1024 * 1024 or getattr(picture, "n_frames", 1) != 1):
+                        raise ValueError("unsupported or oversized raster")
+                    picture.verify()
+            result[source] = f"data:image/{format};base64,{b64encode(body).decode('ascii')}"
+            encoded[body] = result[source]
+        except (OSError, ValueError, Image.DecompressionBombError, Image.DecompressionBombWarning) as exc:
+            raise ReviewError("A collected supporting image is invalid or exceeds viewer limits.") from exc
+    return result
+
+
+def case_images(case):
+    """Read only hash-verified assets listed in this filing's manifest."""
+    from urllib.parse import quote
+    from .errors import ReviewError
+
+    filing = case.to_dict()["filing"]
+    prefix = f"https://www.sec.gov/Archives/edgar/data/{int(filing['cik'])}/{case.filing_id.replace('-', '')}/"
+    images = {}
+    assets = [doc for doc in case.documents if doc.filename.lower().endswith((".jpg", ".jpeg", ".png", ".gif"))]
+    if len(assets) > 128 or sum(doc.size_bytes for doc in assets) > 64 * 1024 * 1024:
+        raise ReviewError("Collected images exceed the viewer's count or byte limit.")
+    for doc in assets:
+        if doc.filename.lower().endswith((".jpg", ".jpeg", ".png", ".gif")):
+            body = doc.read_bytes()
+            # Resolve relative and canonical same-accession references only;
+            # arbitrary URLs sharing a basename can never select an asset.
+            encoded_name = quote(doc.filename, safe="._-")
+            for source in (doc.filename, "./" + doc.filename, encoded_name,
+                           "./" + encoded_name, prefix + encoded_name):
+                images[source] = body
+    return images
+
+
+def sanitized_html(raw: bytes, *, images=None) -> str:
     """Return a complete inert HTML derivative, preserving safe inline styling."""
     import bleach
     import html5lib
 
-    body = _document_body(raw)
+    body = _document_body(raw, _image_data(images or {}))
+    enlarged = _enlarge_embedded_text(body)
     serialized = html5lib.serialize(body, omit_optional_tags=False, quote_attr_values="always")
     # A fresh cleaner per call avoids sharing its stateful parser across sessions.
     content = bleach.Cleaner(
-        tags=_TAGS, attributes=_ATTRIBUTES, protocols=[], strip=True,
+        tags=_TAGS, attributes=_ATTRIBUTES, protocols=["data"], strip=True,
         strip_comments=True, css_sanitizer=_InlineStyle(),
     ).clean(serialized)
+    notice = (
+        '<p role="note">Very small embedded text has been enlarged for reading. '
+        'Missing page images can prevent the original table layout from being reproduced.</p>'
+        if enlarged else ""
+    )
     return (
         '<!doctype html><html><head><meta charset="utf-8">'
         f'<meta http-equiv="Content-Security-Policy" content="{escape(_CSP, quote=True)}">'
-        f'<style>{_BASE_STYLE}</style></head><body>{content}</body></html>'
+        f'<style>{_BASE_STYLE}</style></head><body>{notice}{content}</body></html>'
     )
 
 
-def viewer_frame(raw: bytes) -> str:
+def viewer_frame(raw: bytes, *, images=None) -> str:
     """Trusted outer markup; source content is escaped inside a locked srcdoc."""
     return (
         '<iframe title="Filing document (display only)" sandbox="" '
         'referrerpolicy="no-referrer" style="width:100%;height:680px;border:0" '
-        f'srcdoc="{escape(sanitized_html(raw), quote=True)}"></iframe>'
+        f'srcdoc="{escape(sanitized_html(raw, images=images), quote=True)}"></iframe>'
     )
 
 

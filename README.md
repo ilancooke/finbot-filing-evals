@@ -141,10 +141,71 @@ elements, resource attributes, event handlers and unsafe CSS. The result runs
 inside an iframe with an empty sandbox and a Content Security Policy blocking
 scripts, network resources, forms and base URLs. Only this generated wrapper,
 never raw filing HTML, is passed to Streamlit's embedding API. Links are inert,
-images show available alt text, and external stylesheets, images and fonts are
-not fetched. Source bytes are never changed. Missing assets and removed styling
+collected JPEG/PNG/GIF images are embedded from verified local manifest bytes.
+Uncollected images show available alt text; external stylesheets, images and fonts
+are never fetched. Source bytes are never changed. Missing assets and removed styling
 mean this is not a pixel-identical rendering; wide tables can require horizontal
 scrolling. Use text fallback if a source layout is difficult to read.
+
+Supporting images remain part of the full source manifest/inventory but do not
+clutter the attachment selector. The viewer resolves exact local filenames or
+canonical same-accession SEC URLs to hash-verified assets, validates raster bytes,
+and permits only generated data-image URLs inside its existing sandbox. Source
+scripts, event handlers and arbitrary source data URLs remain removed. Bounds are
+128 images/64 MiB total, 8 MiB per image, 8000 pixels per side and one frame.
+Pillow is included in the `review` extra. Inputs exceeding bounds show an error.
+
+Some image-based attachments, including ASML EX-99.3, contain white 1-point text
+behind unavailable page images. The formatted viewer enlarges embedded text of
+2 pixels or smaller and gives it a readable foreground/background, with a notice.
+For a collected page the image preserves the table layout and its transcription
+stays unobtrusive. Missing pages retain the enlarged-text fallback; it cannot
+reconstruct tables from missing images. The existing shared bundle still needs
+an explicit source refresh after upstream recovery; opening this app never fetches
+images or migrates a bundle. Preserve the old whole bundle and human labels/notes
+while validating a refreshed copy; do not append images or edit integrity by hand.
+Ordinary text styling is preserved. Original files and saved labels are unchanged.
+
+### Refresh recovered images into a separate bundle
+
+The operator-only importer is offline; the review app still never downloads or
+changes source membership. First stop Streamlit, finish pending label saves and
+keep a verified whole-bundle backup. Collect the published producer snapshots,
+acquisition records and recovered image bytes into a local import directory.
+Then stage a new copy:
+
+```bash
+.venv/bin/python -m finbot_filing_evals.review.image_refresh \
+  --dataset-root /path/to/current-bundle \
+  --inputs /path/to/local-import \
+  --output /path/to/new-staged-bundle
+```
+
+`--output` must be new and separate from both input directories. The importer
+locks/verifies the original bundle, preserves every existing artifact and label,
+updates complete source snapshots, acquisition exports, document/label Parquet
+and sidecars, review guide and integrity, then validates all raster assets. It
+never replaces the canonical bundle or refreshes its catalog. Inspect the staged
+copy before replacing the canonical bundle and rebuilding the catalog.
+
+The import directory contains `image-refresh.json` with
+`schema_version: "filing_image_refresh.v1"` and a nonempty `snapshots` array.
+Each entry contains `filing` (the complete published FilingReady 1.0 JSON),
+`filing_record` (its current native producer record), `artifact_records` (all
+selected native producer artifact records), `event_record` (the published archive
+record, including its exact `event_json`), optional `s3_objects` acquisition
+metadata, and `files`. `files` maps only the newly added image artifact IDs to
+`{"path": "relative/image.jpg", "sha256": "..."}`. Images must already be local;
+collection/authentication stays outside this package. Missing originals, changed
+identity/metadata, incomplete publication, duplicate filings, corrupt/oversized
+rasters, mismatched hashes and symlinks are refused. Failed staging removes its
+temporary copy and leaves the original bundle intact.
+
+Labels, notes and unrelated cases retain their values. A changed package requires
+confirmation again: its status becomes unreviewed, while its prior confirmation,
+filing manifest and provenance remain in `source_refresh_history`. The staged
+`.review/image-refresh.json` receipt pins the original integrity digest and import
+manifest hash. Keep the whole-bundle backup and the original import as evidence.
 
 **Save changes** persists corrections without confirming an unreviewed filing.
 Changing labels of an already confirmed case resets it to unreviewed and clears

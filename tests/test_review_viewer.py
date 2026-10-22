@@ -122,6 +122,65 @@ def test_html_encoding_declarations_are_respected():
     assert "Profit \u2013 \u20ac4.60" in sanitized_html(raw)
 
 
+@pytest.mark.parametrize("font_size", ["1pt", "1px", "0", "2px!important;font-size:16px"])
+def test_image_page_transcripts_are_readable_without_fetching_images(font_size):
+    raw = f'''<img src="missing-page.jpg"><div><font size="1"
+    style="font-size:{font_size};color:white!important;line-height:0">
+    Diluted EPS EUR 12.93 27.64</font></div><hr>'''.encode()
+    tree = parse(sanitized_html(raw))
+    transcript = tree.find(".//font")
+    assert "font-size:16px!important" in transcript.attrib["style"]
+    assert "color:#202124!important" in transcript.attrib["style"]
+    assert "line-height:1.45!important" in transcript.attrib["style"]
+    assert "size" not in transcript.attrib
+    assert "12.93 27.64" in transcript.text
+    assert tree.find(".//img") is None
+    assert "Missing page images" in "".join(tree.find("body").itertext())
+    assert "Diluted EPS EUR 12.93 27.64" in plain_text_preview(raw)
+
+
+def test_ordinary_typography_is_preserved_and_later_font_size_wins():
+    raw = b'''<p style="font-size:1pt;font-size:12pt;color:navy">Ordinary text</p>
+    <sup style="font-size:8px">1</sup>'''
+    tree = parse(sanitized_html(raw))
+    assert "font-size:12pt" in tree.find(".//p").attrib["style"]
+    assert "color:navy" in tree.find(".//p").attrib["style"]
+    assert tree.find(".//sup").attrib["style"] == "font-size:8px;"
+    assert "enlarged for reading" not in "".join(tree.find("body").itertext())
+
+
+def test_only_explicit_verified_local_rasters_render_as_images():
+    from io import BytesIO
+    from PIL import Image
+
+    output = BytesIO()
+    Image.new("RGB", (20, 10), "white").save(output, "PNG")
+    raw = b'''<img src="page.png" onload="alert(1)" srcset="https://blocked.invalid/a 2x">
+    <font style="font-size:1pt;color:white">Page transcription</font><hr>
+    <img src="https://blocked.invalid/page.png" alt="Uncollected image">
+    <font style="font-size:1pt;color:white">Missing page transcription</font>'''
+    html = sanitized_html(raw, images={"page.png": output.getvalue()})
+    tree = parse(html)
+    imgs = tree.findall(".//img")
+    assert len(imgs) == 1 and imgs[0].attrib["src"].startswith("data:image/png;base64,")
+    assert set(imgs[0].attrib) == {"src", "alt"}
+    assert "blocked.invalid" not in html
+    fonts = tree.findall(".//font")
+    assert "font-size:1pt" in fonts[0].attrib["style"]
+    assert "font-size:16px!important" in fonts[1].attrib["style"]
+    frame = parse(viewer_frame(raw, images={"page.png": output.getvalue()})).find(".//iframe")
+    assert frame.attrib["sandbox"] == ""
+    policy = parse(frame.attrib["srcdoc"]).find('.//meta[@http-equiv="Content-Security-Policy"]').attrib["content"]
+    assert "img-src data:" in policy and "default-src 'none'" in policy
+
+
+@pytest.mark.parametrize("body", [b"not an image", b'<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>'])
+def test_invalid_and_active_image_bytes_are_refused(body):
+    from finbot_filing_evals.review.errors import ReviewError
+    with pytest.raises(ReviewError, match="supporting image"):
+        sanitized_html(b'<img src="page.jpg">', images={"page.jpg": body})
+
+
 def test_initial_attachment_prefers_exhibit_then_manifest_order(dataset_root):
     documents = load_dataset(dataset_root).cases[0].documents
     assert initial_attachment(documents) == documents[1].artifact_id

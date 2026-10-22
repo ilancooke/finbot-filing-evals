@@ -13,6 +13,7 @@ dependencies = ["jsonschema>=4.23,<5"]
 [project.optional-dependencies]
 dev = ["pytest>=8,<10"]
 review = [
+    "Pillow>=12,<13",
     "streamlit>=1.50,<2", "pandas>=2.2,<4", "pyarrow>=19",
     "bleach[css]>=6.2,<7", "html5lib>=1.1,<2", "tinycss2>=1.4,<2",
 ]
