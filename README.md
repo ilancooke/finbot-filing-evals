@@ -2,7 +2,17 @@
 
 This package provides a local Streamlit UI for inspecting original SEC documents
 collected by `finbot-filings`, correcting reported/adjusted diluted EPS labels,
-and confirming a golden dataset for later extraction evaluation.
+and confirming a golden dataset. A separate CLI evaluates EPS extractors against
+that human-reviewed dataset and compares saved runs.
+
+**Evaluation:** The recommended baseline is Amazon Nova 2 Lite through Bedrock
+with the **v4 prompt, plain-text HTML extraction and original images**. It gave the
+best observed accuracy/cost results in the reviewed sample. Raw/cleaned HTML and
+other prompts remain available for reproducible experiments. Runs freeze reviewed
+inputs and write Markdown, JSON and Parquet reports. See
+[EPS extraction evaluation](#eps-extraction-evaluation) and the
+[experiment results](docs/EVALUATION_EXPERIMENTS.md).
+The Streamlit evaluation screen is a future roadmap item; the review UI is unchanged.
 
 ![EPS review UI showing saved filing progress, an ASML document, the EPS editor and review notes](docs/images/eps-review-ui.png)
 
@@ -28,15 +38,363 @@ prerequisites, acceptance checks and handoff records. Work on the first incomple
 step after verifying its predecessors. Each session must add focused tests,
 run the package checks below, and update the roadmap's status and handoff before
 stopping. Update this README as each new command or feature becomes available.
-No earlier conversation or temporary build script is required.
+No earlier conversation or temporary build script is required. These seven steps
+describe the completed review UI; the separate evaluation handoff is also in the roadmap.
 
-Keep new app code under `src/finbot_filing_evals/review/`, with the thin
+Keep review app code under `src/finbot_filing_evals/review/`, with the thin
 entry point `scripts/review_eps.py`. The former `golden_dataset/` package and
 its tests, prompts, schemas and provider adapters have been removed. Preserve
 unrelated uncommitted changes.
 Use local files; no model calls, AWS access, downloads, sibling-package imports,
 or changes to `finbot-dashboard` are needed for the review UI. Catalog refresh
 uses the sibling repository's CLI as a subprocess, without importing its code.
+Evaluation code belongs under `src/finbot_filing_evals/evaluation/`. Its explicit
+CLI runs may call Bedrock; opening the review app never imports the provider SDK
+or invokes a model. Evaluation does not recreate the former screenshot pipeline.
+
+## EPS extraction evaluation
+
+Run commands from this repository root. Install the optional evaluation and
+Bedrock dependencies in this package's own Python >=3.12 environment:
+
+```bash
+.venv/bin/python -m pip install -e '.[dev,review,eval,bedrock]'
+export FINBOT_DATA_ROOT=/Users/ilan/workspace/finbot/data
+.venv/bin/finbot-eval-eps run --config configs/bedrock-nova-2-lite-prompt-v4.json
+```
+
+The last command makes **paid Bedrock inference calls** using the normal boto3
+credential chain, including `AWS_PROFILE` when set. It never creates AWS resources,
+changes IAM, enables models, downloads documents or alters golden data. Configure
+AWS credentials and model permissions before running it. Tests do not use live AWS.
+No credentials belong in config files, prompts, outputs or command arguments.
+The package does not load `.env` files.
+
+The Nova config selects `us.amazon.nova-2-lite-v1:0` through Bedrock Runtime
+Converse in `us-east-1`, with US geographic routing, 4096 maximum output tokens
+and the model's other defaults (extended thinking is off). The recommended config
+uses `prompts/eps-v4.txt`, the fiscal-period schema, HTML-derived plain text and
+original images. The separate Luna config still references `prompts/eps-v2.txt`;
+model comparisons must align prompts explicitly. Nova uses
+`settings.output_mode: "tool"` to request the EPS
+object through a single forced `submit_eps` response. No external tool is executed
+and there is no second model call; its arguments are the extraction payload and
+undergo the usual validation. Your identity needs access to this model/profile
+and `bedrock:InvokeModel`; organization policies and model access can also apply.
+Consult the current [Nova 2 Lite model card](https://docs.aws.amazon.com/bedrock/latest/userguide/model-card-amazon-nova-2-lite.html)
+for availability, permissions and pricing. Region and optional `aws_profile` are
+explicit config fields; this workflow performs no automatic AWS setup.
+
+The separate Luna config remains available once AWS grants account access:
+
+```bash
+.venv/bin/finbot-eval-eps run --config configs/bedrock-luna.json
+```
+
+Luna uses `us.openai.gpt-6-luna`, the same region and output budget, and its own
+pricing table. Its existing text-response mode remains unchanged. An
+`AccessDeniedException` saying the model is not available for
+the account and to contact AWS Sales is an account-level restriction. See
+[AWS troubleshooting](https://repost.aws/knowledge-center/bedrock-access-denied-exception).
+The Nova configuration is independent of that request. Neither configuration
+automatically enables models or accepts provider agreements.
+
+Nova's pinned US standard rates were verified against AWS Price List API catalog
+version `20261016210806`, effective 2026-10-01 and published 2026-10-16: input
+$0.33, output $2.75, cache-read $0.0825 and cache-write $0 per million tokens.
+The four `us-east-1` SKUs are `FY8T82UUN7VZR55K`, `DY69Q8C3F88CHA2Q`,
+`NZS2WHKW9KB4K2QH` and `RUKFVY37BYV339ZG`, respectively. These are the US rates,
+not the global-routing rates. Nova's config uses multipliers of 1 throughout its
+1M-token context window; it does not inherit Luna's long-context surcharge.
+Rates remain estimates based on provider-reported usage and the pinned table.
+
+### Recommended baseline and experiment results
+
+Use [configs/bedrock-nova-2-lite-prompt-v4.json](configs/bedrock-nova-2-lite-prompt-v4.json)
+with [prompts/eps-v4.txt](prompts/eps-v4.txt). Omitted `html_input` means
+`plain_text`; original collected images are also sent. The prompt targets one
+current fiscal quarter or complete fiscal year, excludes partial-year multiquarter
+aggregations, and retains reported/adjusted EPS and explicitly stated currencies.
+Prompt version v4 still uses the `earnings_eps.fiscal.v2` label contract.
+
+Observed results on the same 13 reviewed filings / 20 quarterly-or-annual targets:
+
+| Input with v4 prompt | F1 | Exact filings | Input tokens | Runtime | Estimated cost per 13-filing run |
+| --- | --- | --- | --- | --- | --- |
+| Plain text, run A | 97.6% | 12/13 | 397,473 | 48.52 s | $0.1349 |
+| Plain text, repeat B | 90.0% | 10/13 | 397,473 | 48.40 s | $0.1348 |
+| Raw HTML | 65.0% | 4/13 | 4,173,479* | 339.73 s | $1.3816* |
+| Cleaned HTML | 78.0% | 8/13 | 997,809 | 78.10 s | $0.3341 |
+
+*Raw HTML usage/cost is incomplete: 12/13 filings reported usage. All costs are
+estimates from pinned rates and provider usage, not confirmed AWS billing.
+The two plain-text runs used identical data, prompt, model settings and code but
+returned different answers. Raw and cleaned HTML each have one measured run;
+these results support the current baseline choice, not a claim of guaranteed
+accuracy or performance on unseen filings. The same small sample was used for
+prompt tuning, with no held-out validation.
+
+See [the experiment record](docs/EVALUATION_EXPERIMENTS.md) for exact run IDs,
+prompt comparisons, remaining failures and reproduction/comparison commands.
+The older `configs/bedrock-nova-2-lite.json` still selects the **v2 prompt**;
+its filename has been retained for reproducibility and does not select v4.
+
+### Available configurations and input modes
+
+| Config under `configs/` | Prompt | HTML input | Role |
+| --- | --- | --- | --- |
+| `bedrock-nova-2-lite-prompt-v4.json` | v4 | Plain text | Recommended baseline |
+| `bedrock-nova-2-lite-prompt-v4-raw-html.json` | v4 | Entire HTML | Evaluated experiment; higher observed cost/lower F1 |
+| `bedrock-nova-2-lite-prompt-v4-cleaned-html.json` | v4 | Cleaned HTML | Evaluated experiment; did not outperform plain text |
+| `bedrock-nova-2-lite-prompt-v5.json` | v5 | Plain text | Evaluated prompt experiment; no observed improvement |
+| `bedrock-nova-2-lite-prompt-v3.json` | v3 | Plain text | Historical prompt experiment |
+| `bedrock-nova-2-lite.json` | v2 | Plain text | Historical fiscal v2 baseline |
+| `bedrock-luna.json` | v2 | Plain text | Separate model config; requires account access |
+
+Bedrock's top-level `html_input` accepts `plain_text` (default), `raw_html` or
+`cleaned_html`. Nova's output mode remains `tool` in every included Nova config.
+The input modes use the same original image attachments and source checks:
+
+- **Plain text:** converts each HTML attachment into readable text, using the
+  existing viewer helper and retaining table-cell separators.
+- **Raw HTML:** sends the entire UTF-8 file as a Converse text block, including
+  scripts, styles, comments and hidden metadata. Invalid encoding or empty input
+  fails explicitly rather than replacing bytes.
+- **Cleaned HTML:** retains headings, paragraphs, captions, notes, currency
+  declarations, visible text, tables, merged cells and empty alignment cells.
+  It unwraps visible formatting/inline-XBRL tags and removes scripts, styles,
+  comments, explicit navigation, hidden metadata, layout attributes and link URLs.
+  Image references retain filenames/alt text; inline image data is removed.
+
+HTML modes send markup for the model to read; they do not render a browser page,
+execute scripts, fetch assets or compute CSS layout. Cleaning honors HTML encoding
+declarations with UTF-8 as the default. It removes `hidden`, inline
+`display:none`/`visibility:hidden`/`visibility:collapse` elements and inline XBRL
+metadata headers, without resolving stylesheets. It does not classify EPS,
+rewrite values, select EPS rows or rebuild tables from positioned text.
+Original files are unchanged, and no input is silently truncated to fit a model.
+The mode is frozen in requests/configs; `run.json` identifies the preprocessing
+version. Existing source-size/image bounds and visible provider errors apply.
+
+`REPORT.md` and `compare` show `inputTokens`/`outputTokens`, accuracy, measured
+runtime and known estimated cost. Counts include cases with invalid output when
+usage was reported; absent usage is partial/unavailable, not zero. Per-case usage
+also retains cache counters, and cost estimates use the pinned cache/long-context
+rates. Failed-request/retry charges may be unknown. Offline rescoring retains
+supplied usage/cost and does not measure fresh inference performance.
+
+Override source/output paths as needed:
+
+```bash
+.venv/bin/python -m finbot_filing_evals.evaluation.cli run \
+  --dataset-root /path/to/reviewed-bundle \
+  --config configs/bedrock-nova-2-lite-prompt-v4.json \
+  --output /path/to/new-run-directory
+```
+
+Without an override, the source is
+`$FINBOT_DATA_ROOT/filing-evals/golden/earnings-eps-v1` and output is a new
+timestamp/UUID directory under `$FINBOT_DATA_ROOT/filing-evals/runs/`.
+Output must be new and separate from the golden bundle. Every filing must have
+saved `human_reviewed` status and a UTC confirmation time. Pending synchronization,
+invalid source hashes, inconsistent exports and concurrent changes during snapshot
+creation refuse the run. There is no partial-review override.
+
+### Inputs and model behavior
+
+The configs in the table above select `label_contract: "earnings_eps.fiscal.v2"`. Evaluation
+targets include standalone quarterly and annual EPS only. Each observation has
+these fields (in either the reported or adjusted EPS array):
+
+```json
+{"value": "4.60", "currency": "USD", "period_type": "quarterly", "fiscal_year": 2026, "fiscal_quarter": 3}
+```
+
+Annual observations use `period_type: "annual"` and `fiscal_quarter: null`.
+Fiscal identifiers follow the issuer's fiscal calendar. Start/end dates and
+free-text period descriptions are absent from predictions and scoring. Full-year
+EPS is distinct from Q4; no quarter is calculated by subtracting cumulative values.
+
+Before inference, the CLI projects the human-reviewed source labels into this
+contract using explicit period descriptions such as `Q3 2026`, `Fiscal Q3 2026`
+and `Fiscal year 2026`. Cumulative/YTD observations are excluded and recorded in
+`target_projection.json`. Ambiguous descriptions stop the run before inference;
+dates are never used to guess fiscal identifiers. Clarify an ambiguous source
+label through the existing review workflow and confirm it again before retrying.
+The original reviewed bundle and review UI retain their existing v1 schema.
+
+Each run copies the original manifest documents and filing identities, preserves
+reviewed source labels in `source_snapshot.json`, and freezes the projected
+targets and schema before calling the extractor. It pins the source integrity hash
+and a frozen dataset revision, exact prompt/config, Python/dependency versions and
+evaluation/preprocessing code hashes. All included cases run in manifest order.
+Later golden edits do not change the run. Frozen inputs are checked again before
+publishing the output directory; an extractor cannot silently change them.
+
+The model receives only public filing context, document content, the general
+extraction prompt and the output schema. Golden labels, confirmation notes and
+the shared-data path are excluded. The recommended `prompts/eps-v4.txt` requests
+the latest
+standalone quarter or fiscal year, reported/adjusted EPS and original currency,
+excluding cumulative/YTD values. To compare
+prompts, create another config referencing a different prompt file; paths are
+resolved relative to the config file. Keep model settings and preprocessing fixed
+when measuring prompt changes.
+
+The default Bedrock input mode derives readable text from each original HTML, retaining
+table-cell separators, and sends every collected raster as original image bytes
+with its filename. It reuses the review viewer's text helper without importing
+Streamlit. Scripts/styles/hidden headers are excluded and nothing is fetched.
+This is text-plus-image extraction, not browser screenshots or pixel-identical
+HTML rendering. The separate `raw_html` and `cleaned_html` modes send markup as
+described above. All modes send one filing per call, sequentially, with
+no retrieval, automatic calculations, model-based grading or repair attempts.
+The default `settings.output_mode` is `text`: only an `end_turn` response
+containing raw JSON is accepted. Nova's included config selects `tool`, which
+requires `tool_use` and exactly one correctly named `submit_eps` tool block.
+The EPS object is validated against the selected contract in both modes.
+Text-mode Markdown fences, invalid tool payloads, duplicate observations, invalid
+fiscal identifiers, refusals, truncation and malformed responses are errors; they are not
+silently repaired or treated as successful empty outputs. This follows
+[AWS's Nova tool-choice guidance](https://docs.aws.amazon.com/nova/latest/nova2-userguide/using-tools.html).
+Both model configs share the same extraction prompt. The output-mode instruction and tool
+schema are added by the adapter and identified by the pinned config/code hashes.
+
+Bedrock inputs are bounded at 20 images per filing, 3.75 MB per image, 8000 pixels
+per side, one image frame and 64 MiB source bytes per filing. Unsupported assets,
+oversized inputs or provider context limits produce visible errors rather than
+silently omitting documents. SDK calls use adaptive retry with at most two total
+attempts; `timeout_seconds` is the socket read timeout per attempt. Provider
+reasoning uses its default and shares the bounded output budget. Increase
+`settings.max_output_tokens` in a new config if results show `max_tokens` failures.
+
+### Scoring and reports
+
+`eps_fiscal_exact.v2` matches observations by EPS type (reported/adjusted), currency,
+period type, fiscal year and fiscal quarter. Order within each metric does not matter.
+
+- **Correct:** matched identity and exact Decimal value; `4.60` equals `4.600`.
+- **Incorrect:** matched identity with a wrong value; no numeric tolerance.
+- **Missing/extra:** unmatched golden/predicted observations. A wrong currency,
+  EPS type or fiscal period counts as one missing plus one extra.
+- Precision = correct / (correct + incorrect + extra); recall = correct /
+  (correct + incorrect + missing). F1 combines these counts. Reports include
+  both overall and per-metric scores, plus the exact-filing match rate.
+
+Failed/invalid cases stay in the evaluation: all their expected observations count
+as missing and they are never exact filings. Unknown prediction counts from failed
+outputs are not invented. Zero-denominator precision/recall display `n/a`; an
+otherwise empty/empty result has F1 1 only when extraction succeeded. Extraction
+error counts and exact-filing rates must be read alongside observation scores.
+
+Each completed run contains:
+
+```text
+run.json                       # configuration, revision, policy, versions, status
+golden.json                    # frozen quarterly/annual targets, without dates
+labels.schema.json             # fiscal v2 extraction schema
+source_snapshot.json           # original reviewed source, including legacy fields
+target_projection.json         # projection counts and excluded cumulative/YTD rows
+extractor.json, prompt.txt     # exact configuration and prompt
+inputs/<case_id>/              # label-free request and copied original documents
+responses/<case_id>.json       # normalized raw response (or command stdout)
+responses/*.provider.json      # native successful Bedrock API responses
+results.json                   # summary, predictions, usage and all differences
+predictions.json               # versioned envelope for offline rescoring
+cases.parquet, cases.metadata.json
+observations.parquet, observations.metadata.json
+REPORT.md                      # overall scores and filing-level errors
+integrity.json                 # hashes/sizes of all run artifacts
+```
+
+EPS values stay strings in Parquet, including trailing zeroes. Fiscal year and
+quarter are integer columns; annual quarters are null. There are no period date
+columns in v2 observation exports. Case rows exist even when a filing has no
+quarterly/annual targets. Metadata marks
+runs with extraction errors as partial. Reports preserve errors and known billed
+usage even when the model's response is invalid. Costs are **estimates**, based on
+the rate table pinned in the config, including cache and long-context rates.
+The example rates were checked on 2026-10-22; verify them before a later run.
+Missing usage/rates leave costs unknown, not zero; retry charges may not be known.
+Saved-prediction scoring records zero new inference runtime and makes no API calls.
+
+Exit code is 0 for a completed run (even with extraction mistakes), 1 when a saved
+run contains extraction errors, and 2 for configuration/input/publication failure.
+Runs publish from a temporary sibling directory after reports and integrity are
+complete. Interrupted runs have no completed output and currently have no resume
+feature; any calls already made may still have incurred charges. There is no
+automatic catalog refresh and no change to golden labels, review state or backups.
+Keep reports under the shared data root, outside Git. Source copies contain filing
+HTML; inspect them with the existing isolated review viewer rather than assuming
+the originals have been sanitized.
+
+### Saved predictions and comparisons
+
+For offline scoring, use a v2 run's `predictions.json`, or construct this envelope
+with **every case_id exactly once** inside `cases`:
+
+```json
+{
+  "schema_version": "eps_predictions.v2",
+  "label_contract": "earnings_eps.fiscal.v2",
+  "cases": {
+    "case-id": {
+      "labels": {"reported_diluted_eps": [], "adjusted_diluted_eps": []},
+      "cost_usd": "0.001",
+      "usage": {"inputTokens": 1000}
+    }
+  }
+}
+```
+
+Cost and usage are optional; cost must be a nonnegative decimal string.
+Missing/unknown case IDs or duplicate
+JSON keys refuse the input. Invalid per-case labels become extraction errors.
+Supply the config/prompt that actually produced those predictions:
+
+```bash
+.venv/bin/finbot-eval-eps run --config configs/bedrock-nova-2-lite-prompt-v4.json \
+  --predictions /path/to/predictions.json --output /path/to/new-scored-run
+.venv/bin/finbot-eval-eps compare /path/to/baseline-run /path/to/candidate-run
+```
+
+Comparison verifies both run inventories and requires the same label contract,
+frozen dataset revision, filing membership and scoring policy. It prints Markdown with overall
+scores, known cost, runtime and filing improvements/regressions. Compare an
+observation's detailed differences in each saved `REPORT.md`; equal F1 can hide
+different mistakes. These small-sample scores do not establish unseen-filing
+performance, and repeatedly tuning on this golden set risks overfitting.
+Model comparisons measure the complete saved extractor configuration, including
+output mode and provider-default reasoning. Align those settings explicitly when
+trying to isolate a single model or prompt difference.
+
+Existing v1 runs remain readable and comparable with compatible v1 runs. They are
+never rewritten or silently converted. A v1 run cannot be compared with v2, and
+legacy predictions cannot be supplied to a v2 config. For an explicit legacy run,
+use `configs/legacy/bedrock-nova-2-lite-v1.json` or
+`configs/legacy/bedrock-luna-v1.json`; these retain `prompts/eps-v1.txt` and the
+original `eps_exact.v1` date-based policy. Configs omitting `label_contract` retain
+v1 behavior for compatibility. New custom configs should explicitly select v2.
+
+For another provider, an optional trusted local command adapter is also available.
+Its config uses `provider: "command"`, `label_contract: "earnings_eps.fiscal.v2"`,
+`name`, `model`, `prompt_file`, optional
+`settings` and `timeout_seconds`, and `command: ["/absolute/python", "/absolute/extract.py"]`.
+The command receives a single JSON request on stdin, reads copied documents via
+paths relative to its case working directory, and writes a single per-case
+`{"labels": {...}}` envelope (with optional cost/usage) to stdout. Invocation uses
+an argument list without a shell; stdout is
+retained (up to 4 MiB) and stderr is not logged. Use absolute script paths.
+The request omits labels/notes and the shared-root environment variables are
+removed, but the command has ordinary OS access: it must be trusted. The command
+timeout applies to the invocation. OpenAI-direct is not implemented. Nova 2 Lite
+uses the included Bedrock configuration and the same shared adapter as Luna.
+
+Evaluation checks (offline synthetic fixtures and mocked Bedrock):
+
+```bash
+.venv/bin/python -m pytest tests/test_evaluation*.py
+```
 
 ## Document EPS golden dataset
 
@@ -64,7 +422,11 @@ $FINBOT_DATA_ROOT/filing-evals/golden/earnings-eps-v1/
 Initially: **13 filing packages, 27 HTML documents, 34 draft observations**
 (25 reported and 9 adjusted), spanning 8-K, 6-K, 10-Q and 10-K forms.
 These counts describe the initial draft; derive current counts from the files.
-All labels currently await human review. Dataset files stay outside Git.
+As of the 2026-10-22 evaluation snapshot, all 13 filings are human reviewed.
+The fiscal v2 projection yields 20 quarterly/annual targets and excludes 14
+partial-year cumulative observations. Counts and review status can change after
+edits; inspect the source/run metadata rather than assuming these are constants.
+Dataset files stay outside Git.
 
 `dataset.json` defines case membership/order and policy. Per-filing `case.json`
 files are the authoritative editable labels and review states. Their document
@@ -476,6 +838,11 @@ durable receipt/retry and canonical-path/copy safeguards.
 The full-workflow regression also covers edit/add/save/delete, guarded navigation,
 empty-case confirmation, restart, and reopening a completed dataset after edits,
 with exact decimal/currency/null preservation and unchanged source/acquisition files.
+The evaluation tests cover deterministic scoring, reviewed-input gating, immutable
+snapshots, command/Bedrock failures, raw responses, pricing, reports and compatible
+run comparison, fiscal target projection, cumulative exclusions and legacy/v2
+separation. Install `.[dev,review,eval,bedrock]` to run every check, including
+the mocked Bedrock and botocore Stubber tests. No live model calls are required.
 
 Compile and verify the installed package:
 

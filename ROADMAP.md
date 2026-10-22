@@ -1,4 +1,4 @@
-# Document EPS Review UI Roadmap
+# Document EPS Review and Evaluation Roadmap
 
 ## Purpose and current state
 
@@ -6,7 +6,7 @@ Build a local Streamlit app in `finbot-filing-evals` for a person to inspect
 original SEC documents, correct EPS labels, and confirm each filing package.
 Read this file and README.md before starting a step; no previous chat is needed.
 
-The draft dataset already exists at:
+The review bundle lives at:
 
 ```text
 $FINBOT_DATA_ROOT/filing-evals/golden/earnings-eps-v1/
@@ -25,6 +25,468 @@ Step 5 adds durable confirmation, UTC timestamps, manifest-order navigation and
 Save/Discard/Stay guards. Step 6 adds saved progress and canonical catalog refresh
 with durable status and retry. Step 7 verifies the complete disposable-copy browser
 workflow, restart, outputs and clean installation, and supplies operating docs.
+
+## Current evaluation baseline — 2026-10-22
+
+Use **Nova 2 Lite through Bedrock, prompt v4, plain-text HTML extraction plus
+original images**. The recommended config is
+`configs/bedrock-nova-2-lite-prompt-v4.json`; `prompts/eps-v4.txt` is unchanged.
+The CLI requires an explicit config; the older `bedrock-nova-2-lite.json` still
+references v2 and has not been repointed. The label contract remains
+`earnings_eps.fiscal.v2`: 20 quarterly/annual targets projected from 34 reviewed
+source observations, with 14 cumulative/YTD exclusions in the current sample.
+
+Observed v4 results, with identical prompt, model settings and target revision:
+
+| Input | F1 | Exact filings | Measured runtime | Known estimated run cost |
+| --- | --- | --- | --- | --- |
+| Plain text A | 97.6% | 12/13 | 48.52 s | $0.1349 |
+| Plain text repeat B | 90.0% | 10/13 | 48.40 s | $0.1348 |
+| Raw HTML | 65.0% | 4/13 | 339.73 s | $1.3816 (incomplete) |
+| Cleaned HTML | 78.0% | 8/13 | 78.10 s | $0.3341 |
+
+These are per-13-filing usage-based cost estimates, not AWS invoices. Raw usage
+is available for 12/13 filings. The small sample was reused for prompt tuning;
+two text runs and one run for each HTML mode are insufficient for broad accuracy
+claims. Retain v4 text as the baseline, pause further prompt/input-format tuning
+on this set, and favor repeatability checks and additional reviewed coverage.
+Other prompts/input modes remain available for controlled reproduction.
+
+See [docs/EVALUATION_EXPERIMENTS.md](docs/EVALUATION_EXPERIMENTS.md) for all seven
+run IDs, observed failures, tokens, costs, limitations and comparison commands.
+The original reviewed bundle, old runs and strict scoring remain unchanged.
+The Streamlit evaluation screen remains a future roadmap item, not part of the
+implemented CLI workflow.
+
+Dated handoffs below record implementation history and checks at that time.
+This section and the experiment record supersede earlier pre-run instructions;
+completed experiments do not need to be rerun merely because an old handoff
+names a "next operator run".
+
+## EPS extraction evaluation — complete
+
+The review workflow above remains complete. A separate CLI evaluation workflow
+freezes verified human-reviewed inputs, runs an extractor without golden labels,
+scores predictions, saves reproducible reports and compares runs. Evaluation output
+belongs under `data/filing-evals/runs/`; it never edits golden labels or refreshes
+the shared catalog. GPT-6 Luna was the first selected model; the Nova maintenance
+entry below supplies a working baseline while Luna account access is pending.
+
+- [x] Implement reviewed-input snapshots, extractor execution and saved-prediction scoring.
+- [x] Implement versioned scoring, filing diagnostics, JSON/Parquet reports and run comparison.
+- [x] Add offline tests, update operating docs and run all package checks.
+- [ ] Future: add a read-only Streamlit evaluation screen for scores, original
+  documents, golden/predicted differences and side-by-side run comparison. This
+  is deferred; the initial evaluation interface is the CLI and saved reports.
+
+Handoff (2026-10-22): complete. New code lives under
+`src/finbot_filing_evals/evaluation/`, separate from the completed review app.
+
+- `cli.py`, `runner.py`, `files.py`: installed `finbot-eval-eps run/compare` and
+  module entry point; explicit/shared-root path resolution; full human-review and
+  existing bundle/export integrity requirements; detection of changes during
+  snapshot creation. Run directories freeze original documents, manifest/cases,
+  schema, prompt/config, source revision and implementation/dependency versions.
+  Label-free requests whitelist public filing metadata. Inputs are rechecked after
+  extraction; output publishes only after reports and run integrity are complete.
+- `bedrock.py`, `configs/bedrock-luna.json`, `prompts/eps-v1.txt`: one filing per
+  sequential Converse call, using `us.openai.gpt-6-luna` in `us-east-1`, a reused
+  boto3 client and the normal credential chain. Readable text comes from the
+  existing viewer helper; original verified rasters are sent as images. No
+  screenshot pipeline, retrieval, downloads or AWS resource provisioning. Output
+  tokens are explicitly bounded; SDK retries/timeouts are configured. Native
+  responses, stop reasons, token usage and rate-table cost estimates are retained.
+  Invalid/truncated/refused responses become visible errors without JSON repair.
+- `extractor.py`: reusable trusted local command adapter and offline saved-response
+  mode. Arguments are passed without a shell, stdin contains only the extraction
+  request, shared-root variables are removed and raw stdout is retained/bounded.
+  The command has ordinary OS access and must be trusted. No credentials are
+  recorded. Saved predictions never initialize a provider client.
+- `scoring.py`, `reports.py`: versioned `eps_exact.v1` matching by metric,
+  currency and dates, with normalized period labels for null starts and exact
+  Decimal comparison. Wrong values, missing and extra observations are distinct;
+  wrong identities produce missing plus extra. Failed cases stay in results and
+  can never be exact filings, including empty ones. Reports include micro
+  precision/recall/F1, per-metric scores, exact-filing rate, errors, runtime and
+  explicitly incomplete cost estimates. String-valued observation Parquet and
+  per-case Parquet each have metadata sidecars. Comparisons verify run integrity
+  and reject different dataset revisions or scoring policies.
+- `pyproject.toml`, `.env.example`, README: console entry point, separate `eval`
+  and `bedrock` extras, operating commands, provider configuration, scoring,
+  input bounds, saved-prediction format, output layout and exit codes. Existing
+  review code, golden labels, catalog behavior and sibling packages are unchanged.
+
+Validation: predecessor baseline 266 passed; final full suite **328 passed**,
+including 62 evaluation tests. Compileall, `pip check`, whitespace checks and the
+isolated wheel build passed. The first wheel attempt could not resolve PyPI in
+the sandbox; the unchanged build passed with network access. Tests use synthetic
+temporary reviewed bundles, blocked network, mocked provider calls, and botocore
+Stubber validation of actual SDK request/response shapes. A wheel extracted
+outside the source tree successfully ran a real local synthetic extractor command,
+saved-prediction rescoring and run comparison, with no AWS calls. The temporary
+QA bundle, extractor script and extracted wheel were removed.
+
+Read-only real-bundle QA froze 13 reviewed cases / 77 artifacts / 50 images into a
+temporary snapshot and prepared every Bedrock request without initializing an AWS
+client. All source assets passed limits (maximum 19 images in a filing; largest
+text input 415,442 characters). All 261 canonical file hashes were unchanged and
+the temporary snapshot was removed. No live inference, real evaluation run,
+golden-label save or shared catalog refresh was performed.
+
+Limitations/next action: run the documented Bedrock baseline when the operator is
+ready to incur inference charges. Live account permissions, model access and
+model accuracy remain unverified; no accuracy result is claimed by mocked tests.
+Costs depend on the pinned rate table and reported usage, and may miss charges
+from retries. This baseline uses provider-default reasoning, prompt-directed JSON
+and a bounded output budget; it does not force structured decoding or repair
+responses. One filing must fit the provider's text/image limits; nothing is
+silently truncated. Interrupted runs have no resume feature. Direct OpenAI and
+Nova baselines were not implemented at this original handoff (see the Nova
+maintenance entry below). The Streamlit evaluation screen stays deferred
+until requested; no UI work is part of this completed CLI milestone.
+
+## Nova 2 Lite baseline — complete
+
+Handoff (2026-10-22): complete. `configs/bedrock-nova-2-lite.json` selects
+`us.amazon.nova-2-lite-v1:0` in `us-east-1`, a 4096-token output budget and
+`settings.output_mode: "tool"`. The original Luna config and shared extraction
+prompt are unchanged. Golden labels, scoring policy, review UI and sibling
+packages are unchanged. The full golden evaluation remains an operator run:
+
+```bash
+.venv/bin/finbot-eval-eps run --config configs/bedrock-nova-2-lite.json
+```
+
+`evaluation/bedrock.py` adds optional `text` (default, preserves Luna behavior)
+and `tool` response modes. Tool mode forces one `submit_eps` response with the
+existing label schema, accepts only the `tool_use` stop reason and exactly one
+correctly named tool block, and validates its input through the same label path.
+It does not execute a tool or make a second model call. Invalid tool arguments,
+missing/wrong/multiple tool responses and truncated/refused/text-only responses
+remain errors; provider usage and original response bytes remain in the run.
+No Markdown stripping, schema relaxation or observation repair was added.
+
+The live smoke initially showed that Nova read the HTML and PNG accurately but
+wrapped JSON in Markdown fences. A stronger text-only instruction still produced
+fences. Following the Nova 2 tool-choice documentation, the final configuration
+uses native tool arguments; the temporary wording change to the shared prompt was
+reverted. Config and code hashes identify this response-mode difference in runs.
+Comparisons describe complete extractor configurations, including their output
+mode and provider-default reasoning, rather than isolating model quality alone.
+
+Pricing was verified read-only using AWS Price List API `GetProducts`, catalog
+version `20261016210806`, effective 2026-10-01 and published 2026-10-16. The pinned
+US standard rates per million tokens are input `0.33`, output `2.75`, cache-read
+`0.0825`, cache-write `0`. Nova uses no long-context rate multiplier throughout
+its 1M-token context window. README records the four pricing SKUs, configuration,
+run command, response modes and Luna account restriction; `.env.example` names
+both model configurations. No dependency changes were needed.
+
+Validation: predecessor suite 328 passed; final full suite **341 passed**, including
+38 Bedrock tests. Compileall, `pip check` and whitespace checks passed. New tests
+cover the shipped Nova config and rates, cache/long-context calculations, official
+botocore Stubber text-plus-image requests and tool responses, shared-pipeline
+rescoring, invalid response modes and malformed/missing/extra tool outputs.
+Normal tests continue to block network and use synthetic temporary bundles.
+
+The user-authorized live check used synthetic HTML containing reported EPS `1.23`
+and a PNG containing adjusted EPS `0.85`, both USD for Q3 2026. Final tool-mode
+Converse returned both exact observations with correct dates, valid against the
+existing schema: 2161 input / 135 output tokens, estimated cost `$0.00108438`,
+about 1.53 seconds. Four small networked probes were needed in total (three
+text-format probes, one successful tool-format probe). The initial sandbox-only
+attempt could not reach the endpoint; networked checks used the package's local
+SDK and existing credentials. AWS MCP was used only for documentation, pricing
+and read-only profile inspection. No AWS resource or account setting was changed.
+Temporary smoke inputs, outputs and script were removed; no real golden labels,
+evaluation outputs or catalog files were written.
+
+Limitations: this demonstrates live access, text/image understanding and schema
+compatibility on a tiny synthetic example, not golden-dataset accuracy. Run the
+command above to measure that. Luna remains blocked by account-level model access
+pending AWS intervention. The Streamlit evaluation screen remains a future item.
+
+## Fiscal-period evaluation contract v2 — complete
+
+Replace date/free-text matching in new evaluations with fiscal year, quarterly or
+annual period type and fiscal quarter. Exclude cumulative/YTD observations from
+the projected golden targets. Keep the reviewed source bundle, review app and
+old runs intact. Version schemas, prompts, scoring, reports and saved predictions;
+reject ambiguous source period descriptions and incompatible comparisons.
+
+Handoff (2026-10-22): complete. Both shipped model configs explicitly select
+`earnings_eps.fiscal.v2` and `prompts/eps-v2.txt`. The observation fields are
+decimal-string `value`, ISO `currency`, `period_type` (`quarterly`/`annual`),
+integer `fiscal_year`, and integer `fiscal_quarter` (1–4, null for annual).
+There are no dates or free-text period fields in extraction targets, predictions,
+scoring identities or v2 observation exports. Annual EPS and Q4 remain distinct;
+no derived quarter or currency conversion is introduced.
+
+- `contracts.py` and the packaged fiscal schema validate the new contract and
+  project reviewed labels using explicit fiscal descriptions only. Unknown or
+  ambiguous descriptions and duplicate projected identities stop before inference.
+  Cumulative/YTD exclusions are explicit and recorded by case/metric/source row.
+- `runner.py` freezes date-free targets in `golden.json`, preserves the original
+  reviewed source in `source_snapshot.json`, and records `target_projection.json`.
+  Versioned requests and the selected schema reach both command and Bedrock
+  adapters without exposing labels. Existing source verification, immutable input
+  checks and atomic publication still apply.
+- `scoring.py`, `reports.py`, `files.py` and `extractor.py` select the versioned
+  contract/policy. Fiscal scoring is exact on metric/currency/type/year/quarter
+  and Decimal value. Reports show exclusions and canonical fiscal identifiers;
+  Parquet year/quarter columns are nullable integers, including empty exports.
+  Saved predictions require an `eps_predictions.v2` envelope and explicit contract.
+- Legacy prompts/configs remain available under `prompts/eps-v1.txt` and
+  `configs/legacy/`. Configs omitting `label_contract` preserve v1 behavior.
+  Original v1 runs remain readable and comparable with compatible v1 runs;
+  v1/v2 comparison and implicit legacy-prediction conversion are refused.
+
+Validation: **407 tests passed**, including 141 evaluation tests. Compileall,
+`pip check`, whitespace checks and the isolated wheel build passed. The built
+wheel loads and validates the packaged fiscal schema outside the source tree.
+Tests use synthetic temporary bundles and mocked provider calls; fiscal checks
+cover projection, ambiguous labels, YTD-only/empty/annual cases, typed exports,
+CLI rescoring/comparison, SDK tool schema and legacy isolation.
+
+Read-only real-bundle QA verified 13 reviewed filings: **20 quarterly/annual
+targets**, **14 cumulative/YTD exclusions**, and no ambiguous descriptions.
+All 261 source files were hash-verified unchanged. The previous Nova v1 run was
+successfully loaded, compared with itself and verified unchanged. Temporary QA
+snapshots were removed. No live inference or shared output/catalog writes were
+performed. The next operator action is a fresh run with the same command:
+
+```bash
+.venv/bin/finbot-eval-eps run --config configs/bedrock-nova-2-lite.json
+```
+
+The Streamlit evaluation screen remains a future roadmap item; the existing
+review app and original human-reviewed source schema are unchanged.
+
+## Extraction prompt v3 — implemented and evaluated
+
+The fiscal v2 Nova run `20261022T182538Z-553cc644` completed without extraction
+errors: 17 correct, 1 incorrect, 2 missing and 18 extra observations; 5/13 exact
+filings. This is the baseline for a prompt-only experiment, with the same source
+revision and strict fiscal scoring. The remaining errors include historical
+comparisons, cumulative values mislabeled as annual or quarterly, misread table
+columns, missed adjusted-EPS wording and omitted USD ADR amounts.
+
+`prompts/eps-v3.txt` adds explicit period/column selection, excludes cumulative
+figures without relabeling or arithmetic, recognizes adjusted EPS described as
+excluding items, and retains explicitly stated local-currency and USD ADR/ADS
+amounts. The rules contain no company names or golden answers.
+`configs/bedrock-nova-2-lite-prompt-v3.json` changes only the extractor name and
+prompt path from the existing Nova config. The baseline configs/prompts, model
+settings, preprocessing, fiscal v2 contract and scoring remain unchanged.
+
+Validation and handoff (2026-10-22): **407 tests passed**; compileall and whitespace
+checks passed. The mocked Bedrock integration runs both Nova configs, verifies
+the selected prompt reaches the provider and is frozen in the output, checks
+matching model/settings/schema/pricing, and successfully compares their reports.
+Read-only QA confirmed the unchanged baseline prompt matches the saved run and
+the candidate config differs only in name/prompt path. No runtime code, dependency,
+golden data, existing run or catalog changes were made, and no live inference was
+performed. Run the new config and compare the resulting report with the fiscal
+v2 baseline to measure accuracy; offline checks cannot establish prompt
+improvement. The Streamlit evaluation screen remains deferred.
+
+Operator result: `20261022T193052Z-e7a6a26a` used the same frozen dataset revision
+and scored 16 correct, 0 incorrect, 4 missing and 2 extra; 9/13 exact filings,
+F1 84.2% versus the v2 prompt's 60.7%. JPM and GM failed validation because their
+responses contained conflicting duplicate fiscal identities, so all four expected
+observations in those filings counted as missing. DPZ and RTX each emitted a
+nine-month figure mislabeled as annual. Those two extras are the next focused
+experiment; the duplicate-response behavior is deferred.
+
+## Extraction prompt v4: exclude partial-year multiquarter aggregations
+
+Implemented `prompts/eps-v4.txt` and the separate
+`configs/bedrock-nova-2-lite-prompt-v4.json`. Relative to v3, period classification
+distinguishes standalone quarters,
+partial-year multiquarter aggregations and explicitly reported complete fiscal
+years. Q1-Q2, Q1-Q3 and other partial-year cumulative/YTD totals are excluded
+without relabeling them as quarterly or annual EPS. Complete-year results remain
+eligible for a selected annual reporting period. A selected quarterly reporting
+period permits no annual observations. A synthetic table illustrates omitting a
+multiquarter total without using a particular company or aggregation length.
+No company names or expected golden values are embedded in the prompt. Only the
+prompt/name change; model, settings, pricing, preprocessing, fiscal v2 response
+schema and scoring are fixed. The existing v2/v3 prompts and saved runs remain
+available for comparison. No automatic filtering or duplicate repair is added.
+
+Validation and handoff (2026-10-22): **407 tests passed**; compileall and whitespace
+checks passed. After generalizing the wording, the mocked Bedrock integration
+passed again with all three prompt configs, confirming prompt delivery, frozen
+artifacts, unchanged settings and compatible comparisons. No live inference or
+shared-data writes were performed. A fresh operator run with the v4 config must
+establish whether DPZ/RTX extras disappear without regressions; compare against
+`20261022T193052Z-e7a6a26a`. The Streamlit evaluation screen stays deferred.
+
+Operator results: v4 run `20261022T200445Z-86cc5fd2` scored 20 correct, 0 missing,
+1 extra and 12/13 exact filings (F1 97.6%). Repeat run
+`20261022T200807Z-087b9cd4` scored 18 correct, 2 missing, 2 extra and 10/13 exact
+filings (F1 90.0%). Both had no extraction errors and identical prompt/config,
+dataset revision and implementation hashes. DPZ's cumulative-as-annual extra
+persisted; the repeat also mislabeled ASML's EUR amount as USD and omitted TSMC's
+USD ADR amount. These runs demonstrate variation, not a consistently solved set.
+
+## Extraction prompt v5: source currency, ADR and period-heading evidence
+
+Inspection of the frozen source documents, ASML's statement image, and the text
+sent to Nova confirmed that the relevant evidence is present. ASML's statement
+declares euros despite its US GAAP title. TSMC prints ordinary-share and USD ADR
+EPS in the same sentence. DPZ distinguishes "Third Quarter" from "Three Fiscal
+Quarters" in grouped headers; flattening makes their relationship less explicit,
+but both headings survive in the model input.
+
+Implemented `prompts/eps-v5.txt` and the separate
+`configs/bedrock-nova-2-lite-prompt-v5.json`. The revision uses statement/table
+currency declarations rather than accounting standards to establish currency,
+retains explicitly reported parenthetical ADR/ADS amounts, distinguishes ordinal
+quarters from quarter counts, and adds a final source currency/share-unit/complete
+period-heading check. Rules are general and embed no company names or golden
+answers. Relative to v4 only name/prompt change; model settings, pricing,
+preprocessing, fiscal v2 response schema and strict scoring stay fixed.
+
+Validation and handoff (2026-10-22): **407 tests passed**; compileall and whitespace
+checks passed. The existing mocked Bedrock integration now exercises all four
+fiscal prompt configs, verifies prompt delivery and frozen artifacts, checks
+identical settings/schema/pricing and successfully compares the reports. Read-only
+QA confirmed v4 still matches both saved v4 prompts and the v5 config changes
+only name/prompt path. Existing prompts, reviewed data and saved runs are
+preserved; no live inference or shared-data writes were performed during
+implementation. The later operator result follows. The Streamlit evaluation
+screen remains deferred.
+
+Operator v5 result: `20261022T202959Z-f8208a78` scored 17 correct, 3 missing and
+6 extra; 9/13 exact filings and F1 79.1%, with one extraction error. ASML currency
+and DPZ cumulative misclassification persisted, JPM included historical quarters,
+and GM used fiscal quarter 9 for nine-month amounts, invalidating that filing.
+TSMC returned both currencies. This run did not demonstrate a v5 improvement;
+the next experiment holds v4 fixed and varies input representation.
+
+## Entire HTML input experiment — implemented and evaluated
+
+Add top-level Bedrock `html_input` selection: `plain_text` (omitted/default,
+preserving existing behavior) or `raw_html`. Raw mode sends the complete UTF-8
+HTML in Converse text blocks with attachment names, without parsing, cleaning,
+rendering or external fetches. Original image bytes, source verification, size
+limits, model settings, output handling and fiscal scoring remain unchanged.
+Invalid encoding/empty raw attachments fail explicitly; nothing is truncated or
+replaced to fit a context limit.
+
+`configs/bedrock-nova-2-lite-prompt-v4-raw-html.json` pins the v4 prompt and all
+existing inference/pricing settings. Frozen requests/configs record the mode and
+run metadata identifies the preprocessing version. Reports/comparisons show
+provider input/output token totals alongside score, runtime and estimated cost,
+with missing counts shown as partial/unavailable rather than zero. Existing
+per-case native usage and cache-aware cost accounting are retained. Old runs are
+read without modification and remain comparable under their original policy.
+
+Read-only input preparation over all 13 frozen filings / 27 HTML attachments
+produced 17,616,432 raw-HTML text characters versus 1,375,708 plain-text characters
+(including context/attachment labels), a 12.81x character ratio. All attachments
+decoded as UTF-8. This is not a token or cost estimate; provider usage from the
+operator's raw run will establish token/cost changes. Large raw filings may
+exceed provider context limits, which must remain visible in results.
+
+Validation and handoff (2026-10-22): **426 tests passed**, including 160 evaluation
+tests. Compileall, `pip check` and whitespace checks passed. Tests verify exact
+raw HTML including scripts/styles/merged headers/whitespace, unchanged image
+bytes, explicit invalid input handling, SDK request shapes for both modes,
+v4 prompt/settings invariance, immutable source data, comparable run artifacts
+and partial usage reporting. Read-only real-input preparation covered all 13
+filings and 27 HTML attachments; an actual old-v4 comparison now displays
+397,473 input tokens in each prior run without rewriting either run. AWS MCP
+documentation confirmed the Converse text-block shape; integration checks use
+mocked clients and SDK Stubber. No live inference or shared-data writes occurred.
+The next operator run is:
+
+```bash
+.venv/bin/finbot-eval-eps run --config configs/bedrock-nova-2-lite-prompt-v4-raw-html.json
+```
+
+Compare the resulting run against a saved v4 plain-text run to assess accuracy,
+usage, latency and estimated cost. After the raw baseline is measured, experiment
+with cleaned HTML that preserves tables and grouped headers. The Streamlit
+evaluation screen remains deferred.
+
+Operator raw result: `20261022T204355Z-7411a967` scored 13 correct, 7 missing and
+7 extra; 4/13 exact filings and F1 65.0%. It consumed 4,173,479 reported input
+tokens and 1,593 output tokens across 12/13 filings, took 339.73 seconds and had
+known estimated cost $1.38162882 (incomplete). JPM had a provider
+ValidationException whose full cause was not retained, and GM failed duplicate
+identity validation. This raw experiment was slower, more expensive and less
+accurate than either v4 text run. The cleaned comparison is recorded below.
+
+## Cleaned HTML input experiment — implemented and evaluated
+
+Add `html_input: "cleaned_html"` and
+`configs/bedrock-nova-2-lite-prompt-v4-cleaned-html.json`, holding the v4 prompt,
+model/settings, original images, fiscal schema, scoring and pricing fixed.
+`evaluation/html_input.py` parses source HTML5 into compact structural markup.
+It retains headings, paragraphs, visible values, notes, lists, captions and
+table/header/merged/empty-cell relationships, removing presentation attributes,
+scripts/styles/comments, explicit navigation, explicit hidden content and inline
+XBRL metadata headers. Visible formatting/XBRL wrappers are unwrapped without
+interpreting financial facts. Link text and image filenames/alt text survive;
+URLs and inline image data are removed. Source files are never rewritten or
+fetched. The cleaner does not compute CSS layout, classify EPS, select target
+rows or truncate to meet provider limits. No new dependency is introduced.
+
+Frozen requests/configs record the mode, while `cleaned_html.html5.v1` and the
+cleaner implementation hash identify preprocessing in the run. Existing plain
+text/raw modes remain available. Report and comparison token/runtime/cost handling
+is shared without changing strict fiscal scoring.
+
+Read-only preparation over the same 13 filings / 27 HTML attachments measured
+3,383,705 cleaned text characters versus 17,616,432 raw and 1,375,708 plain text,
+including context/attachment names (about 81% smaller than raw). Targeted QA
+confirmed ASML's euro declaration and diluted value, TSMC's parenthetical ADR
+amount, and DPZ's grouped quarter/cumulative headings and merged cells survive.
+Characters are not a token or cost estimate; live provider usage is still needed.
+
+Validation and handoff (2026-10-22): **440 tests passed**, including 174 evaluation
+tests. Compileall and whitespace checks passed. Offline tests cover text and
+number retention, grouped/empty/nested tables, hidden-node tails, image references,
+encodings, imperfect HTML, identical provider settings and prompt, original image
+bytes, SDK shapes for all three modes and compatible reports. Read-only QA
+prepared all real inputs and checked ASML/TSMC/DPZ evidence without modifying
+original data or prior runs. No live inference or shared-data writes occurred.
+The next operator run is:
+
+```bash
+.venv/bin/finbot-eval-eps run --config configs/bedrock-nova-2-lite-prompt-v4-cleaned-html.json
+```
+
+Compare against v4 plain text and raw HTML to measure whether retained structure
+helps accuracy at lower input cost than raw HTML; character counts alone do not
+establish this. The Streamlit evaluation screen remains deferred.
+
+Operator cleaned result: `20261022T220153Z-ac6f92af` scored 16 correct, 0
+incorrect, 4 missing and 5 extra; 8/13 exact filings, F1 78.0%, with two output
+validation errors. All 13 filings reported usage: 997,809 input tokens, 1,754
+output tokens, 78.10 seconds and $0.33410047 known estimated cost. ASML currency
+persisted; DPZ assigned quarterly and cumulative values to the same identity;
+GM used quarter 9; GS/RTX produced cumulative/reported amounts as adjusted EPS.
+JPM, TSMC and CMC matched. Cleaning improved on raw HTML but did not outperform
+either text run. The chosen baseline is v4 plain text as stated above.
+
+## Documentation consolidation — complete
+
+Handoff (2026-10-22): README quick start, config guide and offline-scoring/path
+examples now use the recommended v4 plain-text config. Detailed experiment
+history lives in `docs/EVALUATION_EXPERIMENTS.md`, including all measured runs,
+failure modes, incomplete raw costs, repeat variation and the lack of held-out
+validation. Removed stale README claims that the dataset is awaiting review and
+that live HTML comparisons are pending. The environment example points to v4.
+Existing configs/prompts, code, golden data, reports and future Streamlit scope
+are preserved. Validation: **440 tests passed**; whitespace checks passed. Local
+Markdown links and config references were checked; the seven saved run integrity
+inventories and documented F1/exact-filing/cost/token figures were verified
+read-only. The v4 prompt and inference settings align across input modes.
+This handoff changed documentation and environment-example comments only;
+no new tests, live inference, data/catalog writes or runtime changes were needed.
 
 ## Cleanup baseline
 
@@ -850,6 +1312,11 @@ data and the copy; both were unchanged. Compileall, all 266 tests, dependency
 and whitespace checks passed. No runtime behavior changed or new tests were needed.
 
 ## Boundaries for every step
+
+The historical boundaries below govern the review UI. The separate evaluation
+milestone above explicitly permits provider inference only through the evaluation
+CLI; opening the review app still never invokes a provider. Its golden-data
+editing and catalog behavior remain unchanged.
 
 Maintenance (2026-10-21): supporting raster viewing is implemented alongside the
 upstream selective-image change. `review/viewer.py` resolves only explicitly

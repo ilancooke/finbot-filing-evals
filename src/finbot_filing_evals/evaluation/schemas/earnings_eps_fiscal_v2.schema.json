@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Quarterly and annual diluted EPS, fiscal periods V2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["reported_diluted_eps", "adjusted_diluted_eps"],
+  "properties": {
+    "reported_diluted_eps": {"type": "array", "items": {"$ref": "#/$defs/observation"}},
+    "adjusted_diluted_eps": {"type": "array", "items": {"$ref": "#/$defs/observation"}}
+  },
+  "$defs": {
+    "observation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value", "currency", "period_type", "fiscal_year", "fiscal_quarter"],
+      "properties": {
+        "value": {"type": "string", "pattern": "^-?[0-9]+\\.[0-9]+$"},
+        "currency": {"type": "string", "pattern": "^[A-Z]{3}$"},
+        "period_type": {"enum": ["quarterly", "annual"]},
+        "fiscal_year": {"type": "integer", "minimum": 1000, "maximum": 9999},
+        "fiscal_quarter": {"type": ["integer", "null"], "minimum": 1, "maximum": 4}
+      },
+      "allOf": [
+        {"if": {"properties": {"period_type": {"const": "quarterly"}}}, "then": {"properties": {"fiscal_quarter": {"type": "integer"}}}},
+        {"if": {"properties": {"period_type": {"const": "annual"}}}, "then": {"properties": {"fiscal_quarter": {"type": "null"}}}}
+      ]
+    }
+  }
+}

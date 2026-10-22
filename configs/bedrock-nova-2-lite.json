@@ -1,0 +1,24 @@
+{
+  "provider": "bedrock",
+  "name": "nova-2-lite-bedrock-baseline-v2",
+  "model": "us.amazon.nova-2-lite-v1:0",
+  "region": "us-east-1",
+  "prompt_file": "../prompts/eps-v2.txt",
+  "settings": {
+    "max_output_tokens": 4096,
+    "output_mode": "tool"
+  },
+  "timeout_seconds": 120,
+  "pricing": {
+    "input_per_million": "0.33",
+    "output_per_million": "2.75",
+    "cache_read_per_million": "0.0825",
+    "cache_write_per_million": "0",
+    "long_context_threshold": 1000000,
+    "long_context_input_multiplier": "1",
+    "long_context_output_multiplier": "1",
+    "source_url": "https://aws.amazon.com/bedrock/pricing/",
+    "as_of": "2026-10-22"
+  },
+  "label_contract": "earnings_eps.fiscal.v2"
+}

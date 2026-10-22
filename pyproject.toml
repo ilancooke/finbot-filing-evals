@@ -10,8 +10,13 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = ["jsonschema>=4.23,<5"]
 
+[project.scripts]
+finbot-eval-eps = "finbot_filing_evals.evaluation.cli:main"
+
 [project.optional-dependencies]
 dev = ["pytest>=8,<10"]
+eval = ["pyarrow>=19"]
+bedrock = ["boto3>=1.42,<2", "html5lib>=1.1,<2", "Pillow>=12,<13"]
 review = [
     "Pillow>=12,<13",
     "streamlit>=1.50,<2", "pandas>=2.2,<4", "pyarrow>=19",
@@ -23,6 +28,7 @@ where = ["src"]
 
 [tool.setuptools.package-data]
 "finbot_filing_evals.review" = ["schemas/*.json"]
+"finbot_filing_evals.evaluation" = ["schemas/*.json"]
 
 [tool.pytest.ini_options]
 addopts = "-ra"
