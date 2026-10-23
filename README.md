@@ -63,14 +63,35 @@ It retains the original 13 and selects 37 new issuers, including HON's image-hea
 10-Q and four additional foreign 6-K filers. These sources have now been imported
 into a separate **50-case review bundle** at
 `$FINBOT_DATA_ROOT/filing-evals/golden/earnings-eps-50-v1`:
-**13 reviewed originals and 37 unreviewed additions**, with 104 HTML files and
-85 original images. The 37 additions now contain **117 assistant-drafted EPS
-observations and per-case source notes**, ready for human review and correction.
-They remain unreviewed; the original 13 reviewed cases are preserved exactly.
+**50 human-reviewed cases**, with 104 HTML files and 85 original images. The
+37 additions contain 117 source-grounded EPS observations; the original 13
+reviewed cases were preserved exactly.
 The combined bundle has 151 source observations, projecting to 83 fiscal targets
 after 68 cumulative/YTD exclusions. No paid extractor/provider calls were used
 for annotation. See [the labeling handoff](docs/SAMPLE_50_LABELING.md) and
 [the import handoff](docs/SAMPLE_50_IMPORT.md) for verification and provenance.
+
+Run the GPT-6 Luna v4 experiment against all 50 reviewed filings from this repo:
+
+```bash
+export FINBOT_DATA_ROOT=/Users/ilan/workspace/finbot/data
+.venv/bin/finbot-eval-eps run \
+  --dataset-root "$FINBOT_DATA_ROOT/filing-evals/golden/earnings-eps-50-v1" \
+  --config configs/openai-luna-6-prompt-v4-sample-50.json
+```
+
+To compare the targeted reported-EPS scope clarification while holding the
+model, inputs, settings and scoring fixed, use the v6 prompt config:
+
+```bash
+.venv/bin/finbot-eval-eps run \
+  --dataset-root "$FINBOT_DATA_ROOT/filing-evals/golden/earnings-eps-50-v1" \
+  --config configs/openai-luna-6-prompt-v6-sample-50.json
+```
+
+Export `OPENAI_API_KEY` in the same shell before running. This command makes
+paid OpenAI API calls and saves the run under
+`$FINBOT_DATA_ROOT/filing-evals/runs/`.
 
 Open that bundle in the labeling UI with an explicit path:
 

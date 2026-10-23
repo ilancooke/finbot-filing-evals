@@ -83,7 +83,7 @@ def make_client(config):
         raise ReviewError(f'Bedrock client setup failed ({type(exc).__name__}); check the AWS profile and credentials.') from exc
 
 
-def content_blocks(request, workdir, *, html_input='plain_text'):
+def content_blocks(request, workdir, *, html_input='plain_text', provider='bedrock'):
     from PIL import Image
 
     require_html_input(html_input)
@@ -104,14 +104,16 @@ def content_blocks(request, workdir, *, html_input='plain_text'):
         mime = (document['content_type'] or '').split(';')[0].strip().lower()
         if mime.startswith('image/'):
             image_count += 1
-            if image_count > 20 or len(raw) > 3_750_000:
-                raise ReviewError('Bedrock permits at most 20 images, each at most 3.75 MB; nothing was omitted.')
+            if provider == 'bedrock' and (image_count > 20 or len(raw) > 3_750_000):
+                raise ReviewError('Bedrock Converse permits at most 20 images, each at most 3.75 MB; nothing was omitted.')
+            if provider == 'openai' and image_count > 1500:
+                raise ReviewError('OpenAI permits at most 1,500 images per request; nothing was omitted.')
             try:
                 with warnings.catch_warnings():
                     warnings.simplefilter('error', Image.DecompressionBombWarning)
                     with Image.open(BytesIO(raw)) as image:
                         if (image.format not in {'JPEG', 'PNG', 'GIF', 'WEBP'} or getattr(image, 'n_frames', 1) != 1
-                                or max(image.size) > 8000):
+                                or (provider == 'bedrock' and max(image.size) > 8000)):
                             raise ValueError('unsupported raster')
                         image.verify()
                         format = image.format.lower()

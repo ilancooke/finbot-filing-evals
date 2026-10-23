@@ -97,7 +97,7 @@ def make_client(config):
 def contents(request, workdir, provider, mode):
     """Translate the same verified text/image sequence without fetching assets."""
     result = []
-    for block in content_blocks(request, workdir, html_input=mode):
+    for block in content_blocks(request, workdir, html_input=mode, provider=provider):
         if 'text' in block:
             result.append({'type': 'input_text' if provider == 'openai' else 'text', 'text': block['text']})
         else:
