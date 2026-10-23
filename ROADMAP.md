@@ -41,6 +41,67 @@ using fixed v4 plain-text/image inputs; no config has been silently repointed.
 The Nova findings below remain the historical prompt/input reference. The full
 report supersedes their model-selection recommendation.
 
+## Expansion to 50 filings — import complete; human review pending
+
+Handoff (2026-10-22 America/Phoenix; finalized 2026-10-23 UTC):
+[the selection plan](docs/EVALUATION_SAMPLE_50.md) and
+[object manifest](docs/EVALUATION_SAMPLE_50.json) retain the exact original 13
+reviewed filings and select 37 new issuers from the named production artifacts
+bucket. Read-only inventory: 66 tickers, 89 packages and 263 objects. The proposed
+50 contain 104 HTML documents and 85 images, including HON's 34-image 10-Q,
+all six available foreign 6-K issuers, and useful smaller legacy companies
+explicitly approved by the operator. Dated market-cap sources, selection reasons,
+missing-exhibit exclusions and cohort reporting guidance are in the plan.
+
+All selected new HTML was read and verified against inventory sizes/simple ETags;
+original local source hashes and S3 filename/size membership were verified.
+Selection counts and document links were checked; package suite: **498 passed**.
+No runtime code, prompts, configs, gold labels, catalog outputs or AWS resources
+changed. This planning-only change needs no new implementation tests.
+
+Import handoff (2026-10-22 America/Phoenix): downloaded and checksum-verified all
+112 selected additional artifacts (77 HTML files, 35 images; 53,081,714 bytes),
+then created `data/filing-evals/golden/earnings-eps-50-v1` beside the original.
+All original case directories, reviewed labels, notes, confirmations and source
+bytes were copied exactly. The 37 additions have empty labels and unreviewed
+status; no inference ran. New manifests explicitly identify their reconstruction
+from S3 object metadata rather than claiming original FilingReady events.
+Parquet/JSON exports, sidecars, current inventory and bundle integrity validate.
+Archived historical sidecars use `.metadata.archived.json` so catalog discovery
+does not treat them as live datasets. Catalog rebuilt; the new documents/labels
+records are visible. See [the import handoff](docs/SAMPLE_50_IMPORT.md).
+
+The UI was started at `http://127.0.0.1:8502` with the explicit new bundle path.
+AppTest verified 50 listed filings, 13 confirmed/37 unreviewed, and ten selected
+new cases (including HON and all four new foreign filers) without writes.
+Package suite: **498 passed**. No application code or dependencies changed.
+Next work is human review of the 37 additions, then fixed-v4 evaluation with
+original/new/combined cohort results. Default app/config paths still target the
+original 13-case bundle; the 50-case UI uses `--dataset-root` and manual catalog
+refresh after future label saves.
+
+Draft-label handoff (2026-10-22 America/Phoenix): all 37 additions now contain
+source-grounded assistant annotations for the operator to review and edit.
+Transcribed 117 observations directly from collected HTML/tables; inspected HON's
+34 collected charts. Each new case has source and scope notes in the UI. The
+existing review format retains explicit quarterly and YTD figures; fiscal v2
+projects 63 new quarterly targets and excludes 54 new cumulative observations.
+Combined counts are 151 source observations, 83 fiscal targets and 68 cumulative
+exclusions. All 37 additions remain unreviewed; original 13 case files, reviewed
+labels and source bytes are unchanged. No paid model/provider calls were used,
+and the evaluator's human-reviewed gate remains intact.
+
+Drafts were saved through the normal label writer with per-save backups. A
+whole-bundle ZIP backup and an operational annotation audit were retained;
+notes/metadata maintenance used verified hashes and exact replacement backups.
+Exports/integrity and the shared catalog were refreshed. See
+[the labeling handoff](docs/SAMPLE_50_LABELING.md). The next operator action is
+to review the prefilled rows, edit as needed, and confirm each new case.
+Validation: **498 tests passed**; all 37 new UI tables matched their saved
+decimal-string values and displayed the source notes, with 13/50 confirmations
+and no smoke-test writes. Source integrity, fiscal projection, current catalog
+counts and local documentation links passed.
+
 ## Nova reference baseline — 2026-10-22
 
 Use **Nova 2 Lite through Bedrock, prompt v4, plain-text HTML extraction plus

@@ -56,6 +56,40 @@ or invokes a model. Evaluation does not recreate the former screenshot pipeline.
 
 ## EPS extraction evaluation
 
+The proposed expansion from 13 reviewed filings to 50 is documented in
+[the sample selection plan](docs/EVALUATION_SAMPLE_50.md), with exact S3
+accessions and object membership in [the selection manifest](docs/EVALUATION_SAMPLE_50.json).
+It retains the original 13 and selects 37 new issuers, including HON's image-heavy
+10-Q and four additional foreign 6-K filers. These sources have now been imported
+into a separate **50-case review bundle** at
+`$FINBOT_DATA_ROOT/filing-evals/golden/earnings-eps-50-v1`:
+**13 reviewed originals and 37 unreviewed additions**, with 104 HTML files and
+85 original images. The 37 additions now contain **117 assistant-drafted EPS
+observations and per-case source notes**, ready for human review and correction.
+They remain unreviewed; the original 13 reviewed cases are preserved exactly.
+The combined bundle has 151 source observations, projecting to 83 fiscal targets
+after 68 cumulative/YTD exclusions. No paid extractor/provider calls were used
+for annotation. See [the labeling handoff](docs/SAMPLE_50_LABELING.md) and
+[the import handoff](docs/SAMPLE_50_IMPORT.md) for verification and provenance.
+
+Open that bundle in the labeling UI with an explicit path:
+
+```bash
+.venv/bin/python -m streamlit run scripts/review_eps.py \
+  --server.address 127.0.0.1 --server.port 8502 -- \
+  --dataset-root /Users/ilan/workspace/finbot/data/filing-evals/golden/earnings-eps-50-v1
+```
+
+Select **AA** to start the first addition, or **HON** for the 34-image 10-Q.
+The original 13-case bundle, default UI path and evaluation configs are preserved.
+The new bundle requires the explicit path above; automatic catalog refresh is
+disabled for this noncanonical path. After labeling sessions, refresh it with:
+
+```bash
+../finbot-catalog/.venv/bin/python ../finbot-catalog/scripts/build_catalog.py \
+  --data-root /Users/ilan/workspace/finbot/data
+```
+
 Run commands from this repository root. Install the optional evaluation and
 Bedrock dependencies in this package's own Python >=3.12 environment:
 

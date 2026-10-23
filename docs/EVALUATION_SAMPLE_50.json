@@ -1,0 +1,2615 @@
+{
+  "schema_version": "finbot_filing_evals.sample_selection.v1",
+  "status": "selection_plan_only",
+  "selected_at_utc": "2026-10-23T01:39:28.997540+00:00",
+  "bucket": "finbot-prod-state-artifacts82dd59a1-8gt63rcgmaua",
+  "inventory_summary": {
+    "issuers": 66,
+    "filings": 89,
+    "objects": 263,
+    "bytes": 147078618
+  },
+  "baseline_manifest_sha256": "e2ff3f858a75b430d2ba05fb896d86f4efd96e0127f4825f2f362f1587851c94",
+  "baseline_dataset_id": "earnings-eps-v1-draft",
+  "include_useful_smaller_legacy_filings": true,
+  "summary": {
+    "filings": 50,
+    "issuers": 50,
+    "original_filings": 13,
+    "new_filings": 37,
+    "foreign_filings": 6,
+    "tech_or_digital_filings": 10,
+    "html_documents": 104,
+    "images": 85,
+    "bytes": 79001929,
+    "forms": {
+      "6-K": 6,
+      "8-K": 37,
+      "10-K": 1,
+      "10-Q": 6
+    },
+    "sectors": {
+      "Information technology": 7,
+      "Financials": 16,
+      "Industrials": 10,
+      "Consumer discretionary": 2,
+      "Health care": 4,
+      "Materials": 3,
+      "Consumer staples": 3,
+      "Energy": 1,
+      "Communication services": 4
+    }
+  },
+  "notes": [
+    "This is an editorial selection manifest, not an app-loadable golden bundle or evaluation config.",
+    "Original cases must be copied from the verified local reviewed bundle; do not regenerate labels from S3.",
+    "Object membership is the collected S3 package; it is not a claim that every SEC exhibit was collected.",
+    "Currency fields identify review focus, not finalized EPS labels.",
+    "Market-cap snapshots are dated third-party selection context, not point-in-time research-universe eligibility. Unchecked caps remain null.",
+    "Keep original_13 and new_37 scores separate as well as reporting the combined 50; freeze v4 before evaluating new filings."
+  ],
+  "filings": [
+    {
+      "ticker": "ASML",
+      "company": "ASML HOLDING NV",
+      "sector": "Information technology",
+      "cohort": "original_13",
+      "form": "6-K",
+      "prefix": "ASML/2026-10-14_6-K_0001628280-26-065813/",
+      "reason": "Retain the exact human-reviewed filing and local source membership from the original experiment.",
+      "review_status": "human_reviewed",
+      "original_case_path": "cases/asml-0001628280-26-065813/case.json",
+      "original_case_sha256": "bb46a0d5053e782bbf6906e5e4359228024fd2a52b2479bf50e58d2f37c8be3e",
+      "s3_uri": "s3://finbot-prod-state-artifacts82dd59a1-8gt63rcgmaua/ASML/2026-10-14_6-K_0001628280-26-065813/",
+      "filed_date": "2026-10-14",
+      "accession": "0001628280-26-065813",
+      "html_count": 3,
+      "image_count": 12,
+      "bytes": 1584495,
+      "foreign_issuer": true,
+      "domicile": "Netherlands",
+      "currency_review_focus": [
+        "EUR"
+      ],
+      "tech_or_digital": true,
+      "market_cap_snapshot": null,
+      "objects": [
+        {
+          "key": "ASML/2026-10-14_6-K_0001628280-26-065813/financial_statementsxusx.htm",
+          "size": 28220,
+          "etag": "\"bb6077e300a027e5963d23d868101d31\"",
+          "modified": "2026-10-14T10:59:18+00:00"
+        },
+        {
+          "key": "ASML/2026-10-14_6-K_0001628280-26-065813/financial_statementsxusx001.jpg",
+          "size": 137427,
+          "etag": "\"d141804ba24a9f482506903d1161ef56\"",
+          "modified": "2026-10-21T21:35:12+00:00"
+        },
+        {
+          "key": "ASML/2026-10-14_6-K_0001628280-26-065813/financial_statementsxusx002.jpg",
+          "size": 76301,
+          "etag": "\"9e1df7b3ff3154461801438293dd435a\"",
+          "modified": "2026-10-21T21:35:12+00:00"
+        },
+        {
+          "key": "ASML/2026-10-14_6-K_0001628280-26-065813/financial_statementsxusx003.jpg",
+          "size": 118881,
+          "etag": "\"ed03dd7f744e2fe77532ceadb30cc723\"",
+          "modified": "2026-10-21T21:35:13+00:00"
+        },
+        {
+          "key": "ASML/2026-10-14_6-K_0001628280-26-065813/financial_statementsxusx004.jpg",
+          "size": 76898,
+          "etag": "\"1cb314417e2fe5d8ae209f2aeead888e\"",
+          "modified": "2026-10-21T21:35:13+00:00"
+        },
+        {
+          "key": "ASML/2026-10-14_6-K_0001628280-26-065813/financial_statementsxusx005.jpg",
+          "size": 128036,
+          "etag": "\"343ca9de06ed68c2ea15d7c734178aec\"",
+          "modified": "2026-10-21T21:35:13+00:00"
+        },
+        {
+          "key": "ASML/2026-10-14_6-K_0001628280-26-065813/financial_statementsxusx006.jpg",
+          "size": 146974,
+          "etag": "\"e53bc7a4a5721fb96f722d472fbbc2cd\"",
+          "modified": "2026-10-21T21:35:13+00:00"
+        },
+        {
+          "key": "ASML/2026-10-14_6-K_0001628280-26-065813/financial_statementsxusx007.jpg",
+          "size": 130234,
+          "etag": "\"b52aa5cbfe38978c76e4fb7c3a0dc3fa\"",
+          "modified": "2026-10-21T21:35:13+00:00"
+        },
+        {
+          "key": "ASML/2026-10-14_6-K_0001628280-26-065813/financial_statementsxusx008.jpg",
+          "size": 78763,
+          "etag": "\"177be43d3d05cf8ff216b8c5be8f0f70\"",
+          "modified": "2026-10-21T21:35:14+00:00"
+        },
+        {
+          "key": "ASML/2026-10-14_6-K_0001628280-26-065813/financial_statementsxusx009.jpg",
+          "size": 154449,
+          "etag": "\"3eb11f0eed8be96bdb5ac73a567fe569\"",
+          "modified": "2026-10-21T21:35:14+00:00"
+        },
+        {
+          "key": "ASML/2026-10-14_6-K_0001628280-26-065813/financial_statementsxusx010.jpg",
+          "size": 154558,
+          "etag": "\"ab399cb377d894b6351dc50cbd65c7d9\"",
+          "modified": "2026-10-21T21:35:14+00:00"
+        },
+        {
+          "key": "ASML/2026-10-14_6-K_0001628280-26-065813/financial_statementsxusx011.jpg",
+          "size": 58942,
+          "etag": "\"390f82d9a5ebd20ddcff964299854397\"",
+          "modified": "2026-10-21T21:35:14+00:00"
+        },
+        {
+          "key": "ASML/2026-10-14_6-K_0001628280-26-065813/financial_statementsxusx012.jpg",
+          "size": 241878,
+          "etag": "\"f5a6da56470a22bc39f084b88d67f00f\"",
+          "modified": "2026-10-21T21:35:15+00:00"
+        },
+        {
+          "key": "ASML/2026-10-14_6-K_0001628280-26-065813/form6-kquarterlyfilings.htm",
+          "size": 11271,
+          "etag": "\"b9d2a08ad552b6b24996af67f412637a\"",
+          "modified": "2026-10-14T10:59:18+00:00"
+        },
+        {
+          "key": "ASML/2026-10-14_6-K_0001628280-26-065813/pressreleasefinancialresul.htm",
+          "size": 41663,
+          "etag": "\"fdfcbceae60898ed848e064818470699\"",
+          "modified": "2026-10-14T10:59:18+00:00"
+        }
+      ]
+    },
+    {
+      "ticker": "BAC",
+      "company": "BANK OF AMERICA CORP /DE/",
+      "sector": "Financials",
+      "cohort": "original_13",
+      "form": "8-K",
+      "prefix": "BAC/2026-10-14_8-K_0000070858-26-000481/",
+      "reason": "Retain the exact human-reviewed filing and local source membership from the original experiment.",
+      "review_status": "human_reviewed",
+      "original_case_path": "cases/bac-0000070858-26-000481/case.json",
+      "original_case_sha256": "a95c6408a2c9e8107ae207a82faf7045e609daff188d3476795bcfb7ed1483e6",
+      "s3_uri": "s3://finbot-prod-state-artifacts82dd59a1-8gt63rcgmaua/BAC/2026-10-14_8-K_0000070858-26-000481/",
+      "filed_date": "2026-10-14",
+      "accession": "0000070858-26-000481",
+      "html_count": 2,
+      "image_count": 19,
+      "bytes": 3973860,
+      "foreign_issuer": false,
+      "domicile": "United States",
+      "currency_review_focus": [
+        "USD"
+      ],
+      "tech_or_digital": false,
+      "market_cap_snapshot": null,
+      "objects": [
+        {
+          "key": "BAC/2026-10-14_8-K_0000070858-26-000481/bac-20261014.htm",
+          "size": 71422,
+          "etag": "\"598a51c5bb52c156a8102f68d4fad046\"",
+          "modified": "2026-10-14T10:52:48+00:00"
+        },
+        {
+          "key": "BAC/2026-10-14_8-K_0000070858-26-000481/bac09302026ex991.htm",
+          "size": 76237,
+          "etag": "\"4c334f5ada45a6d556170991a3f3866f\"",
+          "modified": "2026-10-14T10:52:48+00:00"
+        },
+        {
+          "key": "BAC/2026-10-14_8-K_0000070858-26-000481/bac09302026ex991001.jpg",
+          "size": 334742,
+          "etag": "\"2ca10d64a8befc121c7d4a1d43267b84\"",
+          "modified": "2026-10-21T21:35:01+00:00"
+        },
+        {
+          "key": "BAC/2026-10-14_8-K_0000070858-26-000481/bac09302026ex991002.jpg",
+          "size": 171206,
+          "etag": "\"59628e4ad48ba23e508368bacb57726d\"",
+          "modified": "2026-10-21T21:35:01+00:00"
+        },
+        {
+          "key": "BAC/2026-10-14_8-K_0000070858-26-000481/bac09302026ex991003.jpg",
+          "size": 238286,
+          "etag": "\"5411dc6e84170afd351e867fae586930\"",
+          "modified": "2026-10-21T21:35:02+00:00"
+        },
+        {
+          "key": "BAC/2026-10-14_8-K_0000070858-26-000481/bac09302026ex991004.jpg",
+          "size": 237254,
+          "etag": "\"00b4991023ba996f06dcd16ed6e755f4\"",
+          "modified": "2026-10-21T21:35:02+00:00"
+        },
+        {
+          "key": "BAC/2026-10-14_8-K_0000070858-26-000481/bac09302026ex991005.jpg",
+          "size": 191018,
+          "etag": "\"dcda5450b832734fd4d45de3215b7703\"",
+          "modified": "2026-10-21T21:35:02+00:00"
+        },
+        {
+          "key": "BAC/2026-10-14_8-K_0000070858-26-000481/bac09302026ex991006.jpg",
+          "size": 197741,
+          "etag": "\"2f49278fd84503357563db7c4d5f1be0\"",
+          "modified": "2026-10-21T21:35:03+00:00"
+        },
+        {
+          "key": "BAC/2026-10-14_8-K_0000070858-26-000481/bac09302026ex991007.jpg",
+          "size": 92945,
+          "etag": "\"0cef2a2387836bea80b93d29fb781b77\"",
+          "modified": "2026-10-21T21:35:03+00:00"
+        },
+        {
+          "key": "BAC/2026-10-14_8-K_0000070858-26-000481/bac09302026ex991008.jpg",
+          "size": 156476,
+          "etag": "\"6b547ff190823687537a6949ed42b2de\"",
+          "modified": "2026-10-21T21:35:03+00:00"
+        },
+        {
+          "key": "BAC/2026-10-14_8-K_0000070858-26-000481/bac09302026ex991009.jpg",
+          "size": 136942,
+          "etag": "\"950baa34e1857fd50aa46e8df198a1ce\"",
+          "modified": "2026-10-21T21:35:03+00:00"
+        },
+        {
+          "key": "BAC/2026-10-14_8-K_0000070858-26-000481/bac09302026ex991010.jpg",
+          "size": 313525,
+          "etag": "\"6b4917d525304c689d93b7054ebd9dab\"",
+          "modified": "2026-10-21T21:35:04+00:00"
+        },
+        {
+          "key": "BAC/2026-10-14_8-K_0000070858-26-000481/bac09302026ex991011.jpg",
+          "size": 65632,
+          "etag": "\"57fb566e5af60947035a59f01f0cda27\"",
+          "modified": "2026-10-21T21:35:04+00:00"
+        },
+        {
+          "key": "BAC/2026-10-14_8-K_0000070858-26-000481/bac09302026ex991012.jpg",
+          "size": 259830,
+          "etag": "\"13c0e1c30a4765cb188c1aff37b5faf2\"",
+          "modified": "2026-10-21T21:35:04+00:00"
+        },
+        {
+          "key": "BAC/2026-10-14_8-K_0000070858-26-000481/bac09302026ex991013.jpg",
+          "size": 456017,
+          "etag": "\"dd2063b9274c98bb4f26cb003bb54428\"",
+          "modified": "2026-10-21T21:35:05+00:00"
+        },
+        {
+          "key": "BAC/2026-10-14_8-K_0000070858-26-000481/bac09302026ex991014.jpg",
+          "size": 204494,
+          "etag": "\"424f8c4a5aee3a7a061f027d0ef067b6\"",
+          "modified": "2026-10-21T21:35:05+00:00"
+        },
+        {
+          "key": "BAC/2026-10-14_8-K_0000070858-26-000481/bac09302026ex991015.jpg",
+          "size": 157033,
+          "etag": "\"7421c6041bb9649e108ce6d82baa7345\"",
+          "modified": "2026-10-21T21:35:05+00:00"
+        },
+        {
+          "key": "BAC/2026-10-14_8-K_0000070858-26-000481/bac09302026ex991016.jpg",
+          "size": 170904,
+          "etag": "\"08e0974f0f4e1d4e22cf6cb902a21caf\"",
+          "modified": "2026-10-21T21:35:06+00:00"
+        },
+        {
+          "key": "BAC/2026-10-14_8-K_0000070858-26-000481/bac09302026ex991017.jpg",
+          "size": 128963,
+          "etag": "\"19b418fa5231f4f138b128c360973d12\"",
+          "modified": "2026-10-21T21:35:06+00:00"
+        },
+        {
+          "key": "BAC/2026-10-14_8-K_0000070858-26-000481/bac09302026ex991018.jpg",
+          "size": 92996,
+          "etag": "\"f50ad157a3973eeadc30de623144d806\"",
+          "modified": "2026-10-21T21:35:06+00:00"
+        },
+        {
+          "key": "BAC/2026-10-14_8-K_0000070858-26-000481/bac09302026ex991019.jpg",
+          "size": 220197,
+          "etag": "\"8cd2e4b47b2c4f4915ce1ae7670e9989\"",
+          "modified": "2026-10-21T21:35:07+00:00"
+        }
+      ]
+    },
+    {
+      "ticker": "DAL",
+      "company": "DELTA AIR LINES, INC.",
+      "sector": "Industrials",
+      "cohort": "original_13",
+      "form": "8-K",
+      "prefix": "DAL/2026-10-09_8-K_0000027904-26-000035/",
+      "reason": "Retain the exact human-reviewed filing and local source membership from the original experiment.",
+      "review_status": "human_reviewed",
+      "original_case_path": "cases/dal-0000027904-26-000035/case.json",
+      "original_case_sha256": "5ef03fd64d72608bcc5a7413523b340137037749a597bea546392df47069eb10",
+      "s3_uri": "s3://finbot-prod-state-artifacts82dd59a1-8gt63rcgmaua/DAL/2026-10-09_8-K_0000027904-26-000035/",
+      "filed_date": "2026-10-09",
+      "accession": "0000027904-26-000035",
+      "html_count": 2,
+      "image_count": 0,
+      "bytes": 735507,
+      "foreign_issuer": false,
+      "domicile": "United States",
+      "currency_review_focus": [
+        "USD"
+      ],
+      "tech_or_digital": false,
+      "market_cap_snapshot": null,
+      "objects": [
+        {
+          "key": "DAL/2026-10-09_8-K_0000027904-26-000035/dal-20261009.htm",
+          "size": 26069,
+          "etag": "\"d4264ce37788cc0fbf6f87ecfc6177af\"",
+          "modified": "2026-10-11T17:23:11+00:00"
+        },
+        {
+          "key": "DAL/2026-10-09_8-K_0000027904-26-000035/deltaairlinesannouncessept.htm",
+          "size": 709438,
+          "etag": "\"a749a68e57233acce537f62c6f153f19\"",
+          "modified": "2026-10-13T17:48:15+00:00"
+        }
+      ]
+    },
+    {
+      "ticker": "DPZ",
+      "company": "DOMINOS PIZZA INC",
+      "sector": "Consumer discretionary",
+      "cohort": "original_13",
+      "form": "8-K",
+      "prefix": "DPZ/2026-10-13_8-K_0001286681-26-000039/",
+      "reason": "Retain the exact human-reviewed filing and local source membership from the original experiment.",
+      "review_status": "human_reviewed",
+      "original_case_path": "cases/dpz-0001286681-26-000039/case.json",
+      "original_case_sha256": "7c1d8ffc96f83cba3f5029a985d6c18d2a4c895b5dc33fed6ab4b810726421f2",
+      "s3_uri": "s3://finbot-prod-state-artifacts82dd59a1-8gt63rcgmaua/DPZ/2026-10-13_8-K_0001286681-26-000039/",
+      "filed_date": "2026-10-13",
+      "accession": "0001286681-26-000039",
+      "html_count": 2,
+      "image_count": 0,
+      "bytes": 996112,
+      "foreign_issuer": false,
+      "domicile": "United States",
+      "currency_review_focus": [
+        "USD"
+      ],
+      "tech_or_digital": false,
+      "market_cap_snapshot": null,
+      "objects": [
+        {
+          "key": "DPZ/2026-10-13_8-K_0001286681-26-000039/dpz-20261013.htm",
+          "size": 50132,
+          "etag": "\"9581d53eb363513c3d5495b6969648da\"",
+          "modified": "2026-10-13T10:20:04+00:00"
+        },
+        {
+          "key": "DPZ/2026-10-13_8-K_0001286681-26-000039/dpz-ex99_1.htm",
+          "size": 945980,
+          "etag": "\"3ac35092a3e696c98a10311010aa669e\"",
+          "modified": "2026-10-13T10:20:05+00:00"
+        }
+      ]
+    },
+    {
+      "ticker": "GS",
+      "company": "GOLDMAN SACHS GROUP INC",
+      "sector": "Financials",
+      "cohort": "original_13",
+      "form": "8-K",
+      "prefix": "GS/2026-10-13_8-K_0000886982-26-000529/",
+      "reason": "Retain the exact human-reviewed filing and local source membership from the original experiment.",
+      "review_status": "human_reviewed",
+      "original_case_path": "cases/gs-0000886982-26-000529/case.json",
+      "original_case_sha256": "d802ed13899648e4b69cd5d1a52aa8c06600e34937a19782e2fc5d52aec1b213",
+      "s3_uri": "s3://finbot-prod-state-artifacts82dd59a1-8gt63rcgmaua/GS/2026-10-13_8-K_0000886982-26-000529/",
+      "filed_date": "2026-10-13",
+      "accession": "0000886982-26-000529",
+      "html_count": 2,
+      "image_count": 0,
+      "bytes": 876111,
+      "foreign_issuer": false,
+      "domicile": "United States",
+      "currency_review_focus": [
+        "USD"
+      ],
+      "tech_or_digital": false,
+      "market_cap_snapshot": null,
+      "objects": [
+        {
+          "key": "GS/2026-10-13_8-K_0000886982-26-000529/a3q26gsearningsresults.htm",
+          "size": 831242,
+          "etag": "\"bda832342ca538bb970b7cecf9578a61\"",
+          "modified": "2026-10-13T11:33:54+00:00"
+        },
+        {
+          "key": "GS/2026-10-13_8-K_0000886982-26-000529/gs-20261013.htm",
+          "size": 44869,
+          "etag": "\"b031d164d96c5410125facffefc963f0\"",
+          "modified": "2026-10-13T11:33:54+00:00"
+        }
+      ]
+    },
+    {
+      "ticker": "JNJ",
+      "company": "JOHNSON & JOHNSON",
+      "sector": "Health care",
+      "cohort": "original_13",
+      "form": "8-K",
+      "prefix": "JNJ/2026-10-13_8-K_0000200406-26-000189/",
+      "reason": "Retain the exact human-reviewed filing and local source membership from the original experiment.",
+      "review_status": "human_reviewed",
+      "original_case_path": "cases/jnj-0000200406-26-000189/case.json",
+      "original_case_sha256": "e870fb72121031b5b2eb7b331dda572dba1697dc2cc74b0433877c4dbe2ca3e6",
+      "s3_uri": "s3://finbot-prod-state-artifacts82dd59a1-8gt63rcgmaua/JNJ/2026-10-13_8-K_0000200406-26-000189/",
+      "filed_date": "2026-10-13",
+      "accession": "0000200406-26-000189",
+      "html_count": 3,
+      "image_count": 0,
+      "bytes": 1245549,
+      "foreign_issuer": false,
+      "domicile": "United States",
+      "currency_review_focus": [
+        "USD"
+      ],
+      "tech_or_digital": false,
+      "market_cap_snapshot": null,
+      "objects": [
+        {
+          "key": "JNJ/2026-10-13_8-K_0000200406-26-000189/a2026q3exhibit991.htm",
+          "size": 107342,
+          "etag": "\"e0c4d3aa9875be932bad7cb299e2dfad\"",
+          "modified": "2026-10-13T12:13:47+00:00"
+        },
+        {
+          "key": "JNJ/2026-10-13_8-K_0000200406-26-000189/a2026q3exhibit992.htm",
+          "size": 1090794,
+          "etag": "\"0a2534bd53c15f22458f9e7774837edb\"",
+          "modified": "2026-10-13T17:48:19+00:00"
+        },
+        {
+          "key": "JNJ/2026-10-13_8-K_0000200406-26-000189/jnj-20261013.htm",
+          "size": 47413,
+          "etag": "\"582bbddb16a19be4a629886561e8507d\"",
+          "modified": "2026-10-13T12:13:46+00:00"
+        }
+      ]
+    },
+    {
+      "ticker": "JPM",
+      "company": "JPMORGAN CHASE & CO",
+      "sector": "Financials",
+      "cohort": "original_13",
+      "form": "8-K",
+      "prefix": "JPM/2026-10-13_8-K_0001628280-26-065582/",
+      "reason": "Retain the exact human-reviewed filing and local source membership from the original experiment.",
+      "review_status": "human_reviewed",
+      "original_case_path": "cases/jpm-0001628280-26-065582/case.json",
+      "original_case_sha256": "51089802c6c40c82df4b45c5be750a383e3b03e7556a7fdfaa2ff617bdf80ed0",
+      "s3_uri": "s3://finbot-prod-state-artifacts82dd59a1-8gt63rcgmaua/JPM/2026-10-13_8-K_0001628280-26-065582/",
+      "filed_date": "2026-10-13",
+      "accession": "0001628280-26-065582",
+      "html_count": 3,
+      "image_count": 0,
+      "bytes": 3639719,
+      "foreign_issuer": false,
+      "domicile": "United States",
+      "currency_review_focus": [
+        "USD"
+      ],
+      "tech_or_digital": false,
+      "market_cap_snapshot": null,
+      "objects": [
+        {
+          "key": "JPM/2026-10-13_8-K_0001628280-26-065582/a3q26erfex992supplement.htm",
+          "size": 3388169,
+          "etag": "\"4efa4fa3d370b33d046e31e8668010b9\"",
+          "modified": "2026-10-13T11:16:23+00:00"
+        },
+        {
+          "key": "JPM/2026-10-13_8-K_0001628280-26-065582/a3q26erfexhibit991narrative.htm",
+          "size": 206172,
+          "etag": "\"7f68ca6e2143c0027bc28c511dac74c0\"",
+          "modified": "2026-10-13T11:16:23+00:00"
+        },
+        {
+          "key": "JPM/2026-10-13_8-K_0001628280-26-065582/jpm-20261013.htm",
+          "size": 45378,
+          "etag": "\"01d82971939f3dc2ad59c23316be2f0b\"",
+          "modified": "2026-10-13T11:16:23+00:00"
+        }
+      ]
+    },
+    {
+      "ticker": "MS",
+      "company": "MORGAN STANLEY",
+      "sector": "Financials",
+      "cohort": "original_13",
+      "form": "8-K",
+      "prefix": "MS/2026-10-14_8-K_0000895421-26-000288/",
+      "reason": "Retain the exact human-reviewed filing and local source membership from the original experiment.",
+      "review_status": "human_reviewed",
+      "original_case_path": "cases/ms-0000895421-26-000288/case.json",
+      "original_case_sha256": "129007f3f6b0c40a4d1f441590eaec3afce7bd89ff76d0cccf9dfbdad7d83ead",
+      "s3_uri": "s3://finbot-prod-state-artifacts82dd59a1-8gt63rcgmaua/MS/2026-10-14_8-K_0000895421-26-000288/",
+      "filed_date": "2026-10-14",
+      "accession": "0000895421-26-000288",
+      "html_count": 3,
+      "image_count": 0,
+      "bytes": 1505870,
+      "foreign_issuer": false,
+      "domicile": "United States",
+      "currency_review_focus": [
+        "USD"
+      ],
+      "tech_or_digital": false,
+      "market_cap_snapshot": null,
+      "objects": [
+        {
+          "key": "MS/2026-10-14_8-K_0000895421-26-000288/a3q26msearningsrelease.htm",
+          "size": 346288,
+          "etag": "\"4ea16b48c40a808bd318934f39134fda\"",
+          "modified": "2026-10-14T11:40:21+00:00"
+        },
+        {
+          "key": "MS/2026-10-14_8-K_0000895421-26-000288/a3q26msfinancialsupplement.htm",
+          "size": 1107425,
+          "etag": "\"da8b55191e8c702d5fc41ff5ca09ac48\"",
+          "modified": "2026-10-14T11:40:21+00:00"
+        },
+        {
+          "key": "MS/2026-10-14_8-K_0000895421-26-000288/ms-20261014.htm",
+          "size": 52157,
+          "etag": "\"0fe9534ae634e393672506cb80b0a6ac\"",
+          "modified": "2026-10-14T11:40:20+00:00"
+        }
+      ]
+    },
+    {
+      "ticker": "UNH",
+      "company": "UNITEDHEALTH GROUP INC",
+      "sector": "Health care",
+      "cohort": "original_13",
+      "form": "8-K",
+      "prefix": "UNH/2026-10-13_8-K_0000731766-26-000255/",
+      "reason": "Retain the exact human-reviewed filing and local source membership from the original experiment.",
+      "review_status": "human_reviewed",
+      "original_case_path": "cases/unh-0000731766-26-000255/case.json",
+      "original_case_sha256": "8c5544245daab21e19b1be0023492e406936e4e49a7050dbc61d6ba52d638caa",
+      "s3_uri": "s3://finbot-prod-state-artifacts82dd59a1-8gt63rcgmaua/UNH/2026-10-13_8-K_0000731766-26-000255/",
+      "filed_date": "2026-10-13",
+      "accession": "0000731766-26-000255",
+      "html_count": 2,
+      "image_count": 16,
+      "bytes": 2953347,
+      "foreign_issuer": false,
+      "domicile": "United States",
+      "currency_review_focus": [
+        "USD"
+      ],
+      "tech_or_digital": false,
+      "market_cap_snapshot": null,
+      "objects": [
+        {
+          "key": "UNH/2026-10-13_8-K_0000731766-26-000255/earningsrelease3q26unh.htm",
+          "size": 53662,
+          "etag": "\"d8748706a349e775aa02efb8146e0215\"",
+          "modified": "2026-10-13T10:25:10+00:00"
+        },
+        {
+          "key": "UNH/2026-10-13_8-K_0000731766-26-000255/earningsrelease3q26unh001.jpg",
+          "size": 192946,
+          "etag": "\"c8f82a0988ca5da33aa8ef727ddfd353\"",
+          "modified": "2026-10-21T21:35:07+00:00"
+        },
+        {
+          "key": "UNH/2026-10-13_8-K_0000731766-26-000255/earningsrelease3q26unh002.jpg",
+          "size": 315229,
+          "etag": "\"05aa1c9b5e5bf81c299b6a1e3cab3508\"",
+          "modified": "2026-10-21T21:35:08+00:00"
+        },
+        {
+          "key": "UNH/2026-10-13_8-K_0000731766-26-000255/earningsrelease3q26unh003.jpg",
+          "size": 147319,
+          "etag": "\"f2cb2a7ce4d791ea84c610d1643c58d5\"",
+          "modified": "2026-10-21T21:35:08+00:00"
+        },
+        {
+          "key": "UNH/2026-10-13_8-K_0000731766-26-000255/earningsrelease3q26unh004.jpg",
+          "size": 184161,
+          "etag": "\"3ef8f9dd006c94381b4d02662fca6d04\"",
+          "modified": "2026-10-21T21:35:08+00:00"
+        },
+        {
+          "key": "UNH/2026-10-13_8-K_0000731766-26-000255/earningsrelease3q26unh005.jpg",
+          "size": 39894,
+          "etag": "\"42ffd2ca645448b89e5736b66aa7458f\"",
+          "modified": "2026-10-21T21:35:08+00:00"
+        },
+        {
+          "key": "UNH/2026-10-13_8-K_0000731766-26-000255/earningsrelease3q26unh006.jpg",
+          "size": 194549,
+          "etag": "\"4a03473b2f91436454678fef152ba7ce\"",
+          "modified": "2026-10-21T21:35:08+00:00"
+        },
+        {
+          "key": "UNH/2026-10-13_8-K_0000731766-26-000255/earningsrelease3q26unh007.jpg",
+          "size": 352933,
+          "etag": "\"544879c491be9a97aa0366244a0d8ac2\"",
+          "modified": "2026-10-21T21:35:09+00:00"
+        },
+        {
+          "key": "UNH/2026-10-13_8-K_0000731766-26-000255/earningsrelease3q26unh008.jpg",
+          "size": 94678,
+          "etag": "\"234246149037d62b48559e8f156bf2cd\"",
+          "modified": "2026-10-21T21:35:09+00:00"
+        },
+        {
+          "key": "UNH/2026-10-13_8-K_0000731766-26-000255/earningsrelease3q26unh009.jpg",
+          "size": 186550,
+          "etag": "\"c7f22a95e1d61f1c6483bfcd21693659\"",
+          "modified": "2026-10-21T21:35:09+00:00"
+        },
+        {
+          "key": "UNH/2026-10-13_8-K_0000731766-26-000255/earningsrelease3q26unh010.jpg",
+          "size": 116420,
+          "etag": "\"7f39fcec9bf15f8a549a6453325af05f\"",
+          "modified": "2026-10-21T21:35:09+00:00"
+        },
+        {
+          "key": "UNH/2026-10-13_8-K_0000731766-26-000255/earningsrelease3q26unh011.jpg",
+          "size": 171417,
+          "etag": "\"2a34255c9de398ff7c2c0bba66e7a150\"",
+          "modified": "2026-10-21T21:35:10+00:00"
+        },
+        {
+          "key": "UNH/2026-10-13_8-K_0000731766-26-000255/earningsrelease3q26unh012.jpg",
+          "size": 190601,
+          "etag": "\"edbe8c822efc8045d38b791876a9fb59\"",
+          "modified": "2026-10-21T21:35:10+00:00"
+        },
+        {
+          "key": "UNH/2026-10-13_8-K_0000731766-26-000255/earningsrelease3q26unh013.jpg",
+          "size": 166031,
+          "etag": "\"db8ee0584be3b14037287fb316506092\"",
+          "modified": "2026-10-21T21:35:10+00:00"
+        },
+        {
+          "key": "UNH/2026-10-13_8-K_0000731766-26-000255/earningsrelease3q26unh014.jpg",
+          "size": 124503,
+          "etag": "\"aa86dd5a21cab0252d9f1beb44922115\"",
+          "modified": "2026-10-21T21:35:11+00:00"
+        },
+        {
+          "key": "UNH/2026-10-13_8-K_0000731766-26-000255/earningsrelease3q26unh015.jpg",
+          "size": 226577,
+          "etag": "\"a01ffe339671d13954500a9d24ddef23\"",
+          "modified": "2026-10-21T21:35:11+00:00"
+        },
+        {
+          "key": "UNH/2026-10-13_8-K_0000731766-26-000255/earningsrelease3q26unh016.jpg",
+          "size": 162886,
+          "etag": "\"f9ff2262d7fb3b832242de9b2da82f85\"",
+          "modified": "2026-10-21T21:35:11+00:00"
+        },
+        {
+          "key": "UNH/2026-10-13_8-K_0000731766-26-000255/unh-20261013.htm",
+          "size": 32991,
+          "etag": "\"04632261fc6f4290ebdca360c726cd41\"",
+          "modified": "2026-10-13T10:25:10+00:00"
+        }
+      ]
+    },
+    {
+      "ticker": "TSM",
+      "company": "TAIWAN SEMICONDUCTOR MANUFACTURING CO LTD",
+      "sector": "Information technology",
+      "cohort": "original_13",
+      "form": "6-K",
+      "prefix": "TSM/2026-10-15_6-K_0001046179-26-000726/",
+      "reason": "Retain the exact human-reviewed filing and local source membership from the original experiment.",
+      "review_status": "human_reviewed",
+      "original_case_path": "cases/tsm-0001046179-26-000726/case.json",
+      "original_case_sha256": "94cdac8635a42096e73fda19a6ec376f9dfd6d56cb954a504718e28e4835cab9",
+      "s3_uri": "s3://finbot-prod-state-artifacts82dd59a1-8gt63rcgmaua/TSM/2026-10-15_6-K_0001046179-26-000726/",
+      "filed_date": "2026-10-15",
+      "accession": "0001046179-26-000726",
+      "html_count": 2,
+      "image_count": 0,
+      "bytes": 47113,
+      "foreign_issuer": true,
+      "domicile": "Taiwan",
+      "currency_review_focus": [
+        "TWD",
+        "USD"
+      ],
+      "tech_or_digital": true,
+      "market_cap_snapshot": null,
+      "objects": [
+        {
+          "key": "TSM/2026-10-15_6-K_0001046179-26-000726/a3q26e_withguidancexfinal.htm",
+          "size": 28001,
+          "etag": "\"cb39314e2676ef659adf6bd00d3c921d\"",
+          "modified": "2026-10-20T23:48:33+00:00"
+        },
+        {
+          "key": "TSM/2026-10-15_6-K_0001046179-26-000726/tsm-20261015x6k.htm",
+          "size": 19112,
+          "etag": "\"f38cc7d21b56ba8e74091deb25ebccc3\"",
+          "modified": "2026-10-20T23:48:33+00:00"
+        }
+      ]
+    },
+    {
+      "ticker": "CMC",
+      "company": "COMMERCIAL METALS Co",
+      "sector": "Materials",
+      "cohort": "original_13",
+      "form": "10-K",
+      "prefix": "CMC/2026-10-16_10-K_0000022444-26-000065/",
+      "reason": "Retain the exact human-reviewed filing and local source membership from the original experiment.",
+      "review_status": "human_reviewed",
+      "original_case_path": "cases/cmc-0000022444-26-000065/case.json",
+      "original_case_sha256": "36ab903b15e316b81bbfbddf3dc8626d78f27343acd8bb9e958fbd7d27f59340",
+      "s3_uri": "s3://finbot-prod-state-artifacts82dd59a1-8gt63rcgmaua/CMC/2026-10-16_10-K_0000022444-26-000065/",
+      "filed_date": "2026-10-16",
+      "accession": "0000022444-26-000065",
+      "html_count": 1,
+      "image_count": 3,
+      "bytes": 2899178,
+      "foreign_issuer": false,
+      "domicile": "United States",
+      "currency_review_focus": [
+        "USD"
+      ],
+      "tech_or_digital": false,
+      "market_cap_snapshot": null,
+      "objects": [
+        {
+          "key": "CMC/2026-10-16_10-K_0000022444-26-000065/cmc-20260831.htm",
+          "size": 2785738,
+          "etag": "\"6dbd13be21d3be72d22f55f548c72f6d\"",
+          "modified": "2026-10-16T14:34:14+00:00"
+        },
+        {
+          "key": "CMC/2026-10-16_10-K_0000022444-26-000065/cmc-20260831_g2.jpg",
+          "size": 82089,
+          "etag": "\"f53b6759de83387adf009e81fcf51aad\"",
+          "modified": "2026-10-21T21:35:00+00:00"
+        },
+        {
+          "key": "CMC/2026-10-16_10-K_0000022444-26-000065/cmc-20260831_g3.jpg",
+          "size": 15224,
+          "etag": "\"16bf207953d36af7be0ffb6764c8f019\"",
+          "modified": "2026-10-21T21:35:01+00:00"
+        },
+        {
+          "key": "CMC/2026-10-16_10-K_0000022444-26-000065/cmc-20260831_g4.jpg",
+          "size": 16127,
+          "etag": "\"98c8d6b0ef5d922afeafbee281df933f\"",
+          "modified": "2026-10-21T21:35:01+00:00"
+        }
+      ]
+    },
+    {
+      "ticker": "RTX",
+      "company": "RTX Corp",
+      "sector": "Industrials",
+      "cohort": "original_13",
+      "form": "10-Q",
+      "prefix": "RTX/2026-10-20_10-Q_0000101829-26-000031/",
+      "reason": "Retain the exact human-reviewed filing and local source membership from the original experiment.",
+      "review_status": "human_reviewed",
+      "original_case_path": "cases/rtx-0000101829-26-000031/case.json",
+      "original_case_sha256": "95b018ce0c30cb38ce6c8244bee511e90805e750f12e3cfc6c5cc71ae130a0d3",
+      "s3_uri": "s3://finbot-prod-state-artifacts82dd59a1-8gt63rcgmaua/RTX/2026-10-20_10-Q_0000101829-26-000031/",
+      "filed_date": "2026-10-20",
+      "accession": "0000101829-26-000031",
+      "html_count": 1,
+      "image_count": 0,
+      "bytes": 2416399,
+      "foreign_issuer": false,
+      "domicile": "United States",
+      "currency_review_focus": [
+        "USD"
+      ],
+      "tech_or_digital": false,
+      "market_cap_snapshot": null,
+      "objects": [
+        {
+          "key": "RTX/2026-10-20_10-Q_0000101829-26-000031/rtx-20260930.htm",
+          "size": 2416399,
+          "etag": "\"6d66c8cc6d4d5430e970a4ad0ab6349f\"",
+          "modified": "2026-10-20T20:40:18+00:00"
+        }
+      ]
+    },
+    {
+      "ticker": "GM",
+      "company": "General Motors Co",
+      "sector": "Consumer discretionary",
+      "cohort": "original_13",
+      "form": "10-Q",
+      "prefix": "GM/2026-10-20_10-Q_0001467858-26-000059/",
+      "reason": "Retain the exact human-reviewed filing and local source membership from the original experiment.",
+      "review_status": "human_reviewed",
+      "original_case_path": "cases/gm-0001467858-26-000059/case.json",
+      "original_case_sha256": "8f4e48b4bfbade7b0e09a079d584d0bf8c0c80f7c90604e6d2dec846d34fde41",
+      "s3_uri": "s3://finbot-prod-state-artifacts82dd59a1-8gt63rcgmaua/GM/2026-10-20_10-Q_0001467858-26-000059/",
+      "filed_date": "2026-10-20",
+      "accession": "0001467858-26-000059",
+      "html_count": 1,
+      "image_count": 0,
+      "bytes": 3046955,
+      "foreign_issuer": false,
+      "domicile": "United States",
+      "currency_review_focus": [
+        "USD"
+      ],
+      "tech_or_digital": false,
+      "market_cap_snapshot": null,
+      "objects": [
+        {
+          "key": "GM/2026-10-20_10-Q_0001467858-26-000059/gm-20260930.htm",
+          "size": 3046955,
+          "etag": "\"89b7fffcfa3e50886cd2bc95fc273953\"",
+          "modified": "2026-10-20T21:41:28+00:00"
+        }
+      ]
+    },
+    {
+      "ticker": "AA",
+      "company": "Alcoa",
+      "sector": "Materials",
+      "cohort": "new_37",
+      "form": "8-K",
+      "prefix": "AA/2026-10-15_8-K_0001193125-26-422891/",
+      "reason": "Aluminum producer; reported/adjusted results and cyclical non-tech coverage.",
+      "review_status": "unreviewed",
+      "s3_uri": "s3://finbot-prod-state-artifacts82dd59a1-8gt63rcgmaua/AA/2026-10-15_8-K_0001193125-26-422891/",
+      "filed_date": "2026-10-15",
+      "accession": "0001193125-26-422891",
+      "html_count": 2,
+      "image_count": 0,
+      "bytes": 1621536,
+      "foreign_issuer": false,
+      "domicile": "United States",
+      "currency_review_focus": [
+        "USD"
+      ],
+      "tech_or_digital": false,
+      "market_cap_snapshot": null,
+      "objects": [
+        {
+          "key": "AA/2026-10-15_8-K_0001193125-26-422891/aa-20261015.htm",
+          "size": 47008,
+          "etag": "\"662f350f7c28cd712781d3eab56c9616\"",
+          "modified": "2026-10-15T20:15:21+00:00",
+          "content_sha256": "a3263f8da9c34ffc2df10778254d672ff37c56bedb52be46dfce9e679519a4fa"
+        },
+        {
+          "key": "AA/2026-10-15_8-K_0001193125-26-422891/aa-ex99_1.htm",
+          "size": 1574528,
+          "etag": "\"dd3e0d078158bdbc00fe2e5c86d733ef\"",
+          "modified": "2026-10-15T20:15:22+00:00",
+          "content_sha256": "34416994e41282b09586c2a466c2205837cb2a32904873ebf605cefbb084b086"
+        }
+      ],
+      "content_check": "All selected HTML read; size and simple ETag verified; EPS terminology present. Gold labels remain unreviewed."
+    },
+    {
+      "ticker": "ABT",
+      "company": "Abbott Laboratories",
+      "sector": "Health care",
+      "cohort": "new_37",
+      "form": "8-K",
+      "prefix": "ABT/2026-10-21_8-K_0001628280-26-066601/",
+      "reason": "Medical devices and diagnostics; reported and adjusted diluted EPS.",
+      "review_status": "unreviewed",
+      "s3_uri": "s3://finbot-prod-state-artifacts82dd59a1-8gt63rcgmaua/ABT/2026-10-21_8-K_0001628280-26-066601/",
+      "filed_date": "2026-10-21",
+      "accession": "0001628280-26-066601",
+      "html_count": 2,
+      "image_count": 0,
+      "bytes": 792429,
+      "foreign_issuer": false,
+      "domicile": "United States",
+      "currency_review_focus": [
+        "USD"
+      ],
+      "tech_or_digital": false,
+      "market_cap_snapshot": null,
+      "objects": [
+        {
+          "key": "ABT/2026-10-21_8-K_0001628280-26-066601/abt-20261021.htm",
+          "size": 28166,
+          "etag": "\"041d89283a2ca69077dd5713506c501f\"",
+          "modified": "2026-10-21T11:37:09+00:00",
+          "content_sha256": "fcbb6972d291fcc281f7bafee79ae0234c75784fe45a51b67f4ea5fddbfa2d2c"
+        },
+        {
+          "key": "ABT/2026-10-21_8-K_0001628280-26-066601/abt-2026q3xexhibitx991.htm",
+          "size": 764263,
+          "etag": "\"a56b5c70797219a577d88d26ebe63d99\"",
+          "modified": "2026-10-21T11:37:10+00:00",
+          "content_sha256": "6029232cbf9c8454e20456d78217c2df6a69603768518fe0d290e108e7c33e80"
+        }
+      ],
+      "content_check": "All selected HTML read; size and simple ETag verified; EPS terminology present. Gold labels remain unreviewed."
+    },
+    {
+      "ticker": "ACI",
+      "company": "Albertsons",
+      "sector": "Consumer staples",
+      "cohort": "new_37",
+      "form": "8-K",
+      "prefix": "ACI/2026-10-13_8-K_0001646972-26-000059/",
+      "reason": "Supermarket operator; off-calendar fiscal quarter and cumulative columns.",
+      "review_status": "unreviewed",
+      "s3_uri": "s3://finbot-prod-state-artifacts82dd59a1-8gt63rcgmaua/ACI/2026-10-13_8-K_0001646972-26-000059/",
+      "filed_date": "2026-10-13",
+      "accession": "0001646972-26-000059",
+      "html_count": 2,
+      "image_count": 0,
+      "bytes": 337938,
+      "foreign_issuer": false,
+      "domicile": "United States",
+      "currency_review_focus": [
+        "USD"
+      ],
+      "tech_or_digital": false,
+      "market_cap_snapshot": null,
+      "objects": [
+        {
+          "key": "ACI/2026-10-13_8-K_0001646972-26-000059/aci-20261013.htm",
+          "size": 28720,
+          "etag": "\"b67452f809042824b48ca96f60aeac2a\"",
+          "modified": "2026-10-13T11:32:26+00:00",
+          "content_sha256": "6a229b7b065217f368b8d7737f5efe50fe6646568bd3fcfcf8ac80ab616a8af4"
+        },
+        {
+          "key": "ACI/2026-10-13_8-K_0001646972-26-000059/aciq226earningsrelease.htm",
+          "size": 309218,
+          "etag": "\"1c8a38070ab88bd00495e05a055647e2\"",
+          "modified": "2026-10-13T11:32:27+00:00",
+          "content_sha256": "e26b16aca12298f6535d5fd5c244467243e942a8445d1080df3bb3251e54e30c"
+        }
+      ],
+      "content_check": "All selected HTML read; size and simple ETag verified; EPS terminology present. Gold labels remain unreviewed."
+    },
+    {
+      "ticker": "AZZ",
+      "company": "AZZ",
+      "sector": "Industrials",
+      "cohort": "new_37",
+      "form": "8-K",
+      "prefix": "AZZ/2026-10-13_8-K_0000008947-26-000188/",
+      "reason": "Smaller coatings business; fiscal Q2 FY2027 and GAAP/non-GAAP reconciliation.",
+      "review_status": "unreviewed",
+      "s3_uri": "s3://finbot-prod-state-artifacts82dd59a1-8gt63rcgmaua/AZZ/2026-10-13_8-K_0000008947-26-000188/",
+      "filed_date": "2026-10-13",
+      "accession": "0000008947-26-000188",
+      "html_count": 2,
+      "image_count": 0,
+      "bytes": 415253,
+      "foreign_issuer": false,
+      "domicile": "United States",
+      "currency_review_focus": [
+        "USD"
+      ],
+      "tech_or_digital": false,
+      "market_cap_snapshot": {
+        "value_usd": 4040000000,
+        "as_of_date": "2026-10-22",
+        "source_url": "https://stockanalysis.com/stocks/azz/market-cap/"
+      },
+      "objects": [
+        {
+          "key": "AZZ/2026-10-13_8-K_0000008947-26-000188/azz-20261013.htm",
+          "size": 29311,
+          "etag": "\"efafc712c928ca61fe8027c36f7f19bc\"",
+          "modified": "2026-10-13T21:16:59+00:00",
+          "content_sha256": "3516b3ed8e41d9091d91f5f9b02fb57dc1dc010411be793c8771834fa4ba503d"
+        },
+        {
+          "key": "AZZ/2026-10-13_8-K_0000008947-26-000188/exhibit991q2fy27earningsre.htm",
+          "size": 385942,
+          "etag": "\"45f8f3010976f648696117c40afbcf48\"",
+          "modified": "2026-10-13T21:16:59+00:00",
+          "content_sha256": "1845e0edc5791a9c9568f041e3d1430cbb484ac39c6f9a9a808a34d48274e355"
+        }
+      ],
+      "content_check": "All selected HTML read; size and simple ETag verified; EPS terminology present. Gold labels remain unreviewed."
+    },
+    {
+      "ticker": "BANF",
+      "company": "BancFirst",
+      "sector": "Financials",
+      "cohort": "new_37",
+      "form": "8-K",
+      "prefix": "BANF/2026-10-21_8-K_0001193125-26-427999/",
+      "reason": "Smaller regional bank; compact release; one stored image is not an image-stress designation.",
+      "review_status": "unreviewed",
+      "s3_uri": "s3://finbot-prod-state-artifacts82dd59a1-8gt63rcgmaua/BANF/2026-10-21_8-K_0001193125-26-427999/",
+      "filed_date": "2026-10-21",
+      "accession": "0001193125-26-427999",
+      "html_count": 2,
+      "image_count": 1,
+      "bytes": 1221091,
+      "foreign_issuer": false,
+      "domicile": "United States",
+      "currency_review_focus": [
+        "USD"
+      ],
+      "tech_or_digital": false,
+      "market_cap_snapshot": {
+        "value_usd": 3640000000,
+        "as_of_date": "2026-10-19",
+        "source_url": "https://stockanalysis.com/stocks/banf/market-cap/"
+      },
+      "objects": [
+        {
+          "key": "BANF/2026-10-21_8-K_0001193125-26-427999/banf-20261021.htm",
+          "size": 46373,
+          "etag": "\"fa226a4d3c4c043de228c0b4fe532560\"",
+          "modified": "2026-10-22T10:05:05+00:00",
+          "content_sha256": "e6a30cfb91ffb21d7c660be46a3dd3519e0b041805822efe1079fc06f3a9c615"
+        },
+        {
+          "key": "BANF/2026-10-21_8-K_0001193125-26-427999/banf-ex99_1.htm",
+          "size": 1162343,
+          "etag": "\"26f9477b1a3c1c1a8dfe23b43d5abc64\"",
+          "modified": "2026-10-22T10:05:06+00:00",
+          "content_sha256": "b09b7669ff94bba3ac40896ad52a141f4ff0ebb38e52ad525fd14db23283824a"
+        },
+        {
+          "key": "BANF/2026-10-21_8-K_0001193125-26-427999/img44656334_0.gif",
+          "size": 12375,
+          "etag": "\"a6c6589386901c946d13dfdb58ea7fc0\"",
+          "modified": "2026-10-22T10:05:06+00:00"
+        }
+      ],
+      "content_check": "All selected HTML read; size and simple ETag verified; EPS terminology present. Gold labels remain unreviewed."
+    },
+    {
+      "ticker": "BLK",
+      "company": "BlackRock",
+      "sector": "Financials",
+      "cohort": "new_37",
+      "form": "8-K",
+      "prefix": "BLK/2026-10-14_8-K_0001193125-26-420979/",
+      "reason": "Large asset manager; earnings release and financial supplement.",
+      "review_status": "unreviewed",
+      "s3_uri": "s3://finbot-prod-state-artifacts82dd59a1-8gt63rcgmaua/BLK/2026-10-14_8-K_0001193125-26-420979/",
+      "filed_date": "2026-10-14",
+      "accession": "0001193125-26-420979",
+      "html_count": 3,
+      "image_count": 0,
+      "bytes": 5210480,
+      "foreign_issuer": false,
+      "domicile": "United States",
+      "currency_review_focus": [
+        "USD"
+      ],
+      "tech_or_digital": false,
+      "market_cap_snapshot": null,
+      "objects": [
+        {
+          "key": "BLK/2026-10-14_8-K_0001193125-26-420979/blk-20261014.htm",
+          "size": 56575,
+          "etag": "\"c9e012518c436dfcaa009f712846c73c\"",
+          "modified": "2026-10-14T11:24:19+00:00",
+          "content_sha256": "75a20699ce6ce613c2d0038819dfbc790ab012aca561848252184174a61fa30a"
+        },
+        {
+          "key": "BLK/2026-10-14_8-K_0001193125-26-420979/blk-ex99_1.htm",
+          "size": 5134318,
+          "etag": "\"7bfdb5e96192577f7d52e8050de08ee2\"",
+          "modified": "2026-10-14T11:24:20+00:00",
+          "content_sha256": "166cbd0c78cd82652c6807512791ef018f42c4edac27dbc24bae361d2906fa60"
+        },
+        {
+          "key": "BLK/2026-10-14_8-K_0001193125-26-420979/blk-ex99_2.htm",
+          "size": 19587,
+          "etag": "\"2506d925adf1ea0ff7d5a689408bd826\"",
+          "modified": "2026-10-14T11:24:20+00:00",
+          "content_sha256": "018f5aacae8fdbc521d39b840a3e6068f5df4b097d5ee7d8dccb59b477192ac3"
+        }
+      ],
+      "content_check": "All selected HTML read; size and simple ETag verified; EPS terminology present. Gold labels remain unreviewed."
+    },
+    {
+      "ticker": "CBSH",
+      "company": "Commerce Bancshares",
+      "sector": "Financials",
+      "cohort": "new_37",
+      "form": "8-K",
+      "prefix": "CBSH/2026-10-20_8-K_0000022356-26-000209/",
+      "reason": "Regional bank; adds smaller-company financial reporting.",
+      "review_status": "unreviewed",
+      "s3_uri": "s3://finbot-prod-state-artifacts82dd59a1-8gt63rcgmaua/CBSH/2026-10-20_8-K_0000022356-26-000209/",
+      "filed_date": "2026-10-20",
+      "accession": "0000022356-26-000209",
+      "html_count": 2,
+      "image_count": 0,
+      "bytes": 713276,
+      "foreign_issuer": false,
+      "domicile": "United States",
+      "currency_review_focus": [
+        "USD"
+      ],
+      "tech_or_digital": false,
+      "market_cap_snapshot": null,
+      "objects": [
+        {
+          "key": "CBSH/2026-10-20_8-K_0000022356-26-000209/cbsh-20261020.htm",
+          "size": 26890,
+          "etag": "\"f12c36498133f9174dbd8bbd077bd33c\"",
+          "modified": "2026-10-20T13:20:36+00:00",
+          "content_sha256": "78c8129550cb618d8c5b5ed55807fc63a4ce93b68954e573358f2008d2802850"
+        },
+        {
+          "key": "CBSH/2026-10-20_8-K_0000022356-26-000209/cbsh09302026ex991.htm",
+          "size": 686386,
+          "etag": "\"d583ac3b6e0ed86f1bf9cd49a4bb6e28\"",
+          "modified": "2026-10-20T13:20:37+00:00",
+          "content_sha256": "173bb9a76bf821e171e9439333637067da705ecc65924a9f424d8e5ae1b7caa5"
+        }
+      ],
+      "content_check": "All selected HTML read; size and simple ETag verified; EPS terminology present. Gold labels remain unreviewed."
+    },
+    {
+      "ticker": "CNS",
+      "company": "Cohen & Steers",
+      "sector": "Financials",
+      "cohort": "new_37",
+      "form": "8-K",
+      "prefix": "CNS/2026-10-15_8-K_0001284812-26-000195/",
+      "reason": "Smaller asset manager; multiple release documents require deduplication.",
+      "review_status": "unreviewed",
+      "s3_uri": "s3://finbot-prod-state-artifacts82dd59a1-8gt63rcgmaua/CNS/2026-10-15_8-K_0001284812-26-000195/",
+      "filed_date": "2026-10-15",
+      "accession": "0001284812-26-000195",
+      "html_count": 3,
+      "image_count": 0,
+      "bytes": 973173,
+      "foreign_issuer": false,
+      "domicile": "United States",
+      "currency_review_focus": [
+        "USD"
+      ],
+      "tech_or_digital": false,
+      "market_cap_snapshot": {
+        "value_usd": 3580000000,
+        "as_of_date": "2026-10-16",
+        "source_url": "https://stockanalysis.com/stocks/cns/market-cap/"
+      },
+      "objects": [
+        {
+          "key": "CNS/2026-10-15_8-K_0001284812-26-000195/cns-20261015.htm",
+          "size": 25126,
+          "etag": "\"a42cbf2feac2d4ae1df8eb2302624a5a\"",
+          "modified": "2026-10-15T20:26:03+00:00",
+          "content_sha256": "f0ce34afeb6402b464512423623084215ac8211d8a12ffe1618b4ec35cc67edc"
+        },
+        {
+          "key": "CNS/2026-10-15_8-K_0001284812-26-000195/cns-earningsannouncement93.htm",
+          "size": 7402,
+          "etag": "\"bcf578e426552b20785c361cbfc4b4d4\"",
+          "modified": "2026-10-15T20:26:03+00:00",
+          "content_sha256": "318638517c709c8f2f757df36c8afa94a2ce849c379c7c0448989542492551c9"
+        },
+        {
+          "key": "CNS/2026-10-15_8-K_0001284812-26-000195/cns-earningsreleasex93026e.htm",
+          "size": 940645,
+          "etag": "\"845b3ec4b34976e2d452139b0c3e2073\"",
+          "modified": "2026-10-15T20:26:04+00:00",
+          "content_sha256": "dc71d498e997d9e7b739ed99fadb5476744718c8249607acf7d00c22bfdbc93b"
+        }
+      ],
+      "content_check": "All selected HTML read; size and simple ETag verified; EPS terminology present. Gold labels remain unreviewed."
+    },
+    {
+      "ticker": "ERIC",
+      "company": "Ericsson",
+      "sector": "Information technology",
+      "cohort": "new_37",
+      "form": "6-K",
+      "prefix": "ERIC/2026-10-15_6-K_0001628280-26-065962/",
+      "reason": "Foreign telecom equipment; explicit SEK diluted EPS and quarter/YTD columns.",
+      "review_status": "unreviewed",
+      "s3_uri": "s3://finbot-prod-state-artifacts82dd59a1-8gt63rcgmaua/ERIC/2026-10-15_6-K_0001628280-26-065962/",
+      "filed_date": "2026-10-15",
+      "accession": "0001628280-26-065962",
+      "html_count": 2,
+      "image_count": 0,
+      "bytes": 5312094,
+      "foreign_issuer": true,
+      "domicile": "Sweden",
+      "currency_review_focus": [
+        "SEK"
+      ],
+      "tech_or_digital": true,
+      "market_cap_snapshot": null,
+      "objects": [
+        {
+          "key": "ERIC/2026-10-15_6-K_0001628280-26-065962/a2026q3forfiling.htm",
+          "size": 5300624,
+          "etag": "\"ee904e0f1becbd12b08370402c603a3f\"",
+          "modified": "2026-10-20T23:48:34+00:00",
+          "content_sha256": "fcc60c8a16f1166660909a381296b7f31165c9ace8dc7e816c551e5a27a2c422"
+        },
+        {
+          "key": "ERIC/2026-10-15_6-K_0001628280-26-065962/a2610156-kq326.htm",
+          "size": 11470,
+          "etag": "\"e6d8e745731e103b953e17c82dd42e52\"",
+          "modified": "2026-10-20T23:48:34+00:00",
+          "content_sha256": "c170d3021b09fed942f2c24d58d74794e86f34e0e59f83d225a0a27bf7b18867"
+        }
+      ],
+      "content_check": "All selected HTML read; size and simple ETag verified; EPS terminology present. Gold labels remain unreviewed."
+    },
+    {
+      "ticker": "FAST",
+      "company": "Fastenal",
+      "sector": "Industrials",
+      "cohort": "new_37",
+      "form": "8-K",
+      "prefix": "FAST/2026-10-14_8-K_0000815556-26-000046/",
+      "reason": "Industrial distribution; current quarter and nine-month columns.",
+      "review_status": "unreviewed",
+      "s3_uri": "s3://finbot-prod-state-artifacts82dd59a1-8gt63rcgmaua/FAST/2026-10-14_8-K_0000815556-26-000046/",
+      "filed_date": "2026-10-14",
+      "accession": "0000815556-26-000046",
+      "html_count": 2,
+      "image_count": 0,
+      "bytes": 475734,
+      "foreign_issuer": false,
+      "domicile": "United States",
+      "currency_review_focus": [
+        "USD"
+      ],
+      "tech_or_digital": false,
+      "market_cap_snapshot": null,
+      "objects": [
+        {
+          "key": "FAST/2026-10-14_8-K_0000815556-26-000046/ex_99109302026earningsrele.htm",
+          "size": 445368,
+          "etag": "\"22b43cba7fb5ac364de3c47814a330c4\"",
+          "modified": "2026-10-14T11:57:24+00:00",
+          "content_sha256": "a43db567abee8dd8175ca3ed5c05fcf93c9f4cb08a1bcb2db3015e8ab56a7a48"
+        },
+        {
+          "key": "FAST/2026-10-14_8-K_0000815556-26-000046/fast-20261014.htm",
+          "size": 30366,
+          "etag": "\"b4ec6439f163b4e88ac82718f0ddbaca\"",
+          "modified": "2026-10-14T11:57:24+00:00",
+          "content_sha256": "db7c6f32923600986832524748b6d7b47ac5f79233d66e5945d55317b34c8373"
+        }
+      ],
+      "content_check": "All selected HTML read; size and simple ETag verified; EPS terminology present. Gold labels remain unreviewed."
+    },
+    {
+      "ticker": "FBK",
+      "company": "FB Financial",
+      "sector": "Financials",
+      "cohort": "new_37",
+      "form": "8-K",
+      "prefix": "FBK/2026-10-13_8-K_0001649749-26-000063/",
+      "reason": "Smaller bank; reported/adjusted EPS and supplemental financial tables.",
+      "review_status": "unreviewed",
+      "s3_uri": "s3://finbot-prod-state-artifacts82dd59a1-8gt63rcgmaua/FBK/2026-10-13_8-K_0001649749-26-000063/",
+      "filed_date": "2026-10-13",
+      "accession": "0001649749-26-000063",
+      "html_count": 3,
+      "image_count": 0,
+      "bytes": 2903328,
+      "foreign_issuer": false,
+      "domicile": "United States",
+      "currency_review_focus": [
+        "USD"
+      ],
+      "tech_or_digital": false,
+      "market_cap_snapshot": {
+        "value_usd": 2590000000,
+        "as_of_date": "2026-10-20",
+        "source_url": "https://stockanalysis.com/stocks/fbk/market-cap/"
+      },
+      "objects": [
+        {
+          "key": "FBK/2026-10-13_8-K_0001649749-26-000063/a3q26pressreleasetablesfor.htm",
+          "size": 292331,
+          "etag": "\"8a8542d5e0c2b723315940dc81b6f41f\"",
+          "modified": "2026-10-13T10:24:10+00:00",
+          "content_sha256": "f7669c8cc348012a12b156ca40b2d59a6dbb150fd33788d1c92c438cf2f904b7"
+        },
+        {
+          "key": "FBK/2026-10-13_8-K_0001649749-26-000063/a3q26supplementalfinancial.htm",
+          "size": 2576159,
+          "etag": "\"f8f90058df84e20a5d5ed172878a0d19\"",
+          "modified": "2026-10-13T10:24:11+00:00",
+          "content_sha256": "ce01cc3f4103010347c379c3d6546671e53f2bd0592b954633b1815f7b8a6f4a"
+        },
+        {
+          "key": "FBK/2026-10-13_8-K_0001649749-26-000063/fbk-20261013.htm",
+          "size": 34838,
+          "etag": "\"e858b98855e70e722d3796b1212bf91f\"",
+          "modified": "2026-10-13T10:24:09+00:00",
+          "content_sha256": "78437484ff60c89d6555b75d8f026a7d2aab3cbdfb6551bcb84a28d816424cf4"
+        }
+      ],
+      "content_check": "All selected HTML read; size and simple ETag verified; EPS terminology present. Gold labels remain unreviewed."
+    },
+    {
+      "ticker": "GLDG",
+      "company": "GoldMining",
+      "sector": "Materials",
+      "cohort": "new_37",
+      "form": "6-K",
+      "prefix": "GLDG/2026-10-14_6-K_0001437749-26-032624/",
+      "reason": "Canadian mining issuer; CAD loss per share, basic/diluted wording and quarter/YTD separation.",
+      "review_status": "unreviewed",
+      "s3_uri": "s3://finbot-prod-state-artifacts82dd59a1-8gt63rcgmaua/GLDG/2026-10-14_6-K_0001437749-26-032624/",
+      "filed_date": "2026-10-14",
+      "accession": "0001437749-26-032624",
+      "html_count": 2,
+      "image_count": 0,
+      "bytes": 1959843,
+      "foreign_issuer": true,
+      "domicile": "Canada",
+      "currency_review_focus": [
+        "CAD"
+      ],
+      "tech_or_digital": false,
+      "market_cap_snapshot": {
+        "value_usd": 173820000,
+        "as_of_date": "2026-10-19",
+        "source_url": "https://stockanalysis.com/stocks/gldg/market-cap/"
+      },
+      "objects": [
+        {
+          "key": "GLDG/2026-10-14_6-K_0001437749-26-032624/ex_1024583.htm",
+          "size": 1943283,
+          "etag": "\"a01d787dabed80e30263af5bc2c2e70d\"",
+          "modified": "2026-10-14T20:52:17+00:00",
+          "content_sha256": "00e5bc7fd9f039e925224efc3ab13a36ef928fd79a9a6e0510447a90213df0d4"
+        },
+        {
+          "key": "GLDG/2026-10-14_6-K_0001437749-26-032624/gldmn20261009_6k.htm",
+          "size": 16560,
+          "etag": "\"bd75860502d6a5ad3047e9dc6f510479\"",
+          "modified": "2026-10-14T20:52:16+00:00",
+          "content_sha256": "da4b644b598ea7212b2924b92234f3abbe6fa767e848d7c63ddb2a042a61ec31"
+        }
+      ],
+      "content_check": "All selected HTML read; size and simple ETag verified; EPS terminology present. Gold labels remain unreviewed."
+    },
+    {
+      "ticker": "HAL",
+      "company": "Halliburton",
+      "sector": "Energy",
+      "cohort": "new_37",
+      "form": "8-K",
+      "prefix": "HAL/2026-10-20_8-K_0000045012-26-000070/",
+      "reason": "Oilfield services; reported and adjusted diluted EPS.",
+      "review_status": "unreviewed",
+      "s3_uri": "s3://finbot-prod-state-artifacts82dd59a1-8gt63rcgmaua/HAL/2026-10-20_8-K_0000045012-26-000070/",
+      "filed_date": "2026-10-20",
+      "accession": "0000045012-26-000070",
+      "html_count": 2,
+      "image_count": 0,
+      "bytes": 813942,
+      "foreign_issuer": false,
+      "domicile": "United States",
+      "currency_review_focus": [
+        "USD"
+      ],
+      "tech_or_digital": false,
+      "market_cap_snapshot": null,
+      "objects": [
+        {
+          "key": "HAL/2026-10-20_8-K_0000045012-26-000070/hal-20261020.htm",
+          "size": 35478,
+          "etag": "\"c6a2cfcd1215fffa7702ffedfcfe4a64\"",
+          "modified": "2026-10-20T11:08:38+00:00",
+          "content_sha256": "398db80158aec383471e68f2408d24e2acb0304ebff5b8e7bb342b433c1db978"
+        },
+        {
+          "key": "HAL/2026-10-20_8-K_0000045012-26-000070/livemastererdocument.htm",
+          "size": 778464,
+          "etag": "\"fb5e4dd3b8954097599a787c4463f1b9\"",
+          "modified": "2026-10-20T11:08:39+00:00",
+          "content_sha256": "0acb84cec3cf34924737a23a389fb9fce2b71e5a98fc3c5eaba92ba546447686"
+        }
+      ],
+      "content_check": "All selected HTML read; size and simple ETag verified; EPS terminology present. Gold labels remain unreviewed."
+    },
+    {
+      "ticker": "HOMB",
+      "company": "Home BancShares",
+      "sector": "Financials",
+      "cohort": "new_37",
+      "form": "8-K",
+      "prefix": "HOMB/2026-10-14_8-K_0001331520-26-000117/",
+      "reason": "Lower-end-of-current-universe bank; multiple quarterly comparisons and adjusted EPS.",
+      "review_status": "unreviewed",
+      "s3_uri": "s3://finbot-prod-state-artifacts82dd59a1-8gt63rcgmaua/HOMB/2026-10-14_8-K_0001331520-26-000117/",
+      "filed_date": "2026-10-14",
+      "accession": "0001331520-26-000117",
+      "html_count": 2,
+      "image_count": 0,
+      "bytes": 1227834,
+      "foreign_issuer": false,
+      "domicile": "United States",
+      "currency_review_focus": [
+        "USD"
+      ],
+      "tech_or_digital": false,
+      "market_cap_snapshot": {
+        "value_usd": 5820000000,
+        "as_of_date": "2026-10-16",
+        "source_url": "https://stockanalysis.com/stocks/homb/market-cap/"
+      },
+      "objects": [
+        {
+          "key": "HOMB/2026-10-14_8-K_0001331520-26-000117/homb-20261014.htm",
+          "size": 25244,
+          "etag": "\"b1526c53c7f19045bd67bfd3f3c49132\"",
+          "modified": "2026-10-14T21:19:43+00:00",
+          "content_sha256": "c3090da6241525e322ff295b57bf8847d07df6d1fa5ce49d306a522671c8362a"
+        },
+        {
+          "key": "HOMB/2026-10-14_8-K_0001331520-26-000117/homb093026earningsrelease.htm",
+          "size": 1202590,
+          "etag": "\"63e9760f2d344592912bef30539b7f1b\"",
+          "modified": "2026-10-14T21:19:44+00:00",
+          "content_sha256": "459c2d0f6acbbd426406e3ce97a03c969a24abf7d017bf9d4fe2901cce4f370c"
+        }
+      ],
+      "content_check": "All selected HTML read; size and simple ETag verified; EPS terminology present. Gold labels remain unreviewed."
+    },
+    {
+      "ticker": "HON",
+      "company": "Honeywell",
+      "sector": "Industrials",
+      "cohort": "new_37",
+      "form": "10-Q",
+      "prefix": "HON/2026-10-22_10-Q_0000773840-26-000143/",
+      "reason": "Required image case: 34 stored JPEGs; continuing/discontinued operations and total EPS.",
+      "review_status": "unreviewed",
+      "s3_uri": "s3://finbot-prod-state-artifacts82dd59a1-8gt63rcgmaua/HON/2026-10-22_10-Q_0000773840-26-000143/",
+      "filed_date": "2026-10-22",
+      "accession": "0000773840-26-000143",
+      "html_count": 1,
+      "image_count": 34,
+      "bytes": 4081818,
+      "foreign_issuer": false,
+      "domicile": "United States",
+      "currency_review_focus": [
+        "USD"
+      ],
+      "tech_or_digital": false,
+      "market_cap_snapshot": null,
+      "objects": [
+        {
+          "key": "HON/2026-10-22_10-Q_0000773840-26-000143/hon-20260930.htm",
+          "size": 2649002,
+          "etag": "\"b82ede3ae4c380deb4178acfe1f3d593\"",
+          "modified": "2026-10-22T14:35:40+00:00",
+          "content_sha256": "0b513af80470429ad127e23f36f913605ec442ce5c1ec268770fb1f327dbcd7d"
+        },
+        {
+          "key": "HON/2026-10-22_10-Q_0000773840-26-000143/hon-20260930_g10.jpg",
+          "size": 33190,
+          "etag": "\"d5b99a6e0ae90aa77183eb73c5e8a0fd\"",
+          "modified": "2026-10-22T14:35:40+00:00"
+        },
+        {
+          "key": "HON/2026-10-22_10-Q_0000773840-26-000143/hon-20260930_g11.jpg",
+          "size": 34381,
+          "etag": "\"333bfb2429eb04affcc89a6831ec81ea\"",
+          "modified": "2026-10-22T14:35:41+00:00"
+        },
+        {
+          "key": "HON/2026-10-22_10-Q_0000773840-26-000143/hon-20260930_g12.jpg",
+          "size": 36582,
+          "etag": "\"4d66ff3988bfa7793f6ae673868c1d3c\"",
+          "modified": "2026-10-22T14:35:41+00:00"
+        },
+        {
+          "key": "HON/2026-10-22_10-Q_0000773840-26-000143/hon-20260930_g13.jpg",
+          "size": 23220,
+          "etag": "\"aa3fbf4cb117ac049580ef5d739bbb98\"",
+          "modified": "2026-10-22T14:35:41+00:00"
+        },
+        {
+          "key": "HON/2026-10-22_10-Q_0000773840-26-000143/hon-20260930_g14.jpg",
+          "size": 34926,
+          "etag": "\"a96a59711c871b76d4987e9159c19e85\"",
+          "modified": "2026-10-22T14:35:42+00:00"
+        },
+        {
+          "key": "HON/2026-10-22_10-Q_0000773840-26-000143/hon-20260930_g15.jpg",
+          "size": 36667,
+          "etag": "\"d15387797565e6b855b960d0ce733401\"",
+          "modified": "2026-10-22T14:35:42+00:00"
+        },
+        {
+          "key": "HON/2026-10-22_10-Q_0000773840-26-000143/hon-20260930_g16.jpg",
+          "size": 37683,
+          "etag": "\"ba3a18b13f699ed1035beb8cb722b0c1\"",
+          "modified": "2026-10-22T14:35:42+00:00"
+        },
+        {
+          "key": "HON/2026-10-22_10-Q_0000773840-26-000143/hon-20260930_g17.jpg",
+          "size": 34605,
+          "etag": "\"a38f71f36fae131817c7454b707c34c5\"",
+          "modified": "2026-10-22T14:35:42+00:00"
+        },
+        {
+          "key": "HON/2026-10-22_10-Q_0000773840-26-000143/hon-20260930_g18.jpg",
+          "size": 34393,
+          "etag": "\"e638c7ebce49f1dee1694f4438d7e798\"",
+          "modified": "2026-10-22T14:35:42+00:00"
+        },
+        {
+          "key": "HON/2026-10-22_10-Q_0000773840-26-000143/hon-20260930_g19.jpg",
+          "size": 42413,
+          "etag": "\"d4ef07bfc35c7ba2bdc796384a354f2f\"",
+          "modified": "2026-10-22T14:35:42+00:00"
+        },
+        {
+          "key": "HON/2026-10-22_10-Q_0000773840-26-000143/hon-20260930_g2.jpg",
+          "size": 87853,
+          "etag": "\"cbf67d6885cdb543eb4628aec607cfe9\"",
+          "modified": "2026-10-22T14:35:43+00:00"
+        },
+        {
+          "key": "HON/2026-10-22_10-Q_0000773840-26-000143/hon-20260930_g20.jpg",
+          "size": 34750,
+          "etag": "\"fb0bad83591ebd3a380d4d8c37f032ce\"",
+          "modified": "2026-10-22T14:35:43+00:00"
+        },
+        {
+          "key": "HON/2026-10-22_10-Q_0000773840-26-000143/hon-20260930_g21.jpg",
+          "size": 32361,
+          "etag": "\"c0fa40897dc7cb0c0d70de6d9835c2b9\"",
+          "modified": "2026-10-22T14:35:43+00:00"
+        },
+        {
+          "key": "HON/2026-10-22_10-Q_0000773840-26-000143/hon-20260930_g22.jpg",
+          "size": 16851,
+          "etag": "\"9df8fbda9de822d808f2c0dcc05cd8ce\"",
+          "modified": "2026-10-22T14:35:43+00:00"
+        },
+        {
+          "key": "HON/2026-10-22_10-Q_0000773840-26-000143/hon-20260930_g23.jpg",
+          "size": 34624,
+          "etag": "\"93c9993f3045a4f742a92101dc29226b\"",
+          "modified": "2026-10-22T14:35:44+00:00"
+        },
+        {
+          "key": "HON/2026-10-22_10-Q_0000773840-26-000143/hon-20260930_g24.jpg",
+          "size": 32901,
+          "etag": "\"b75f787d9f8793db43cb3775d0c8b6fd\"",
+          "modified": "2026-10-22T14:35:44+00:00"
+        },
+        {
+          "key": "HON/2026-10-22_10-Q_0000773840-26-000143/hon-20260930_g25.jpg",
+          "size": 35404,
+          "etag": "\"6543f6f73a83a0686888a810c19a4a2a\"",
+          "modified": "2026-10-22T14:35:44+00:00"
+        },
+        {
+          "key": "HON/2026-10-22_10-Q_0000773840-26-000143/hon-20260930_g26.jpg",
+          "size": 32440,
+          "etag": "\"7ced503fbfe05ff90e99a546f5fe2397\"",
+          "modified": "2026-10-22T14:35:44+00:00"
+        },
+        {
+          "key": "HON/2026-10-22_10-Q_0000773840-26-000143/hon-20260930_g27.jpg",
+          "size": 37707,
+          "etag": "\"36137d7e016d8a4aa7acd178bc1db976\"",
+          "modified": "2026-10-22T14:35:44+00:00"
+        },
+        {
+          "key": "HON/2026-10-22_10-Q_0000773840-26-000143/hon-20260930_g28.jpg",
+          "size": 9041,
+          "etag": "\"de9b12c4006c126cda36db85dce725db\"",
+          "modified": "2026-10-22T14:35:45+00:00"
+        },
+        {
+          "key": "HON/2026-10-22_10-Q_0000773840-26-000143/hon-20260930_g29.jpg",
+          "size": 35928,
+          "etag": "\"ce2176080595435e63bbebce05eb8975\"",
+          "modified": "2026-10-22T14:35:45+00:00"
+        },
+        {
+          "key": "HON/2026-10-22_10-Q_0000773840-26-000143/hon-20260930_g3.jpg",
+          "size": 91100,
+          "etag": "\"c5b75853947c62da4d878b689a3673d3\"",
+          "modified": "2026-10-22T14:35:45+00:00"
+        },
+        {
+          "key": "HON/2026-10-22_10-Q_0000773840-26-000143/hon-20260930_g30.jpg",
+          "size": 36976,
+          "etag": "\"3087fa73503135c3467dc4b9c5883f1e\"",
+          "modified": "2026-10-22T14:35:45+00:00"
+        },
+        {
+          "key": "HON/2026-10-22_10-Q_0000773840-26-000143/hon-20260930_g31.jpg",
+          "size": 9616,
+          "etag": "\"8df32b6b3a9c6548d8297f73ac1f08e6\"",
+          "modified": "2026-10-22T14:35:45+00:00"
+        },
+        {
+          "key": "HON/2026-10-22_10-Q_0000773840-26-000143/hon-20260930_g32.jpg",
+          "size": 34411,
+          "etag": "\"632f7a67c14e1e3128eb15eb5bad66df\"",
+          "modified": "2026-10-22T14:35:46+00:00"
+        },
+        {
+          "key": "HON/2026-10-22_10-Q_0000773840-26-000143/hon-20260930_g33.jpg",
+          "size": 35735,
+          "etag": "\"f99e475c95746c90322fdb0df49e137c\"",
+          "modified": "2026-10-22T14:35:46+00:00"
+        },
+        {
+          "key": "HON/2026-10-22_10-Q_0000773840-26-000143/hon-20260930_g34.jpg",
+          "size": 33284,
+          "etag": "\"e7318c3c234ec39ccd9577918e1e8af3\"",
+          "modified": "2026-10-22T14:35:46+00:00"
+        },
+        {
+          "key": "HON/2026-10-22_10-Q_0000773840-26-000143/hon-20260930_g35.jpg",
+          "size": 36666,
+          "etag": "\"11a980910fed0c61f39f2820392ccdfd\"",
+          "modified": "2026-10-22T14:35:46+00:00"
+        },
+        {
+          "key": "HON/2026-10-22_10-Q_0000773840-26-000143/hon-20260930_g4.jpg",
+          "size": 93135,
+          "etag": "\"a880e6256281b37df344a58b28688e97\"",
+          "modified": "2026-10-22T14:35:47+00:00"
+        },
+        {
+          "key": "HON/2026-10-22_10-Q_0000773840-26-000143/hon-20260930_g5.jpg",
+          "size": 72817,
+          "etag": "\"b3d5f003f6f2fefd2ed784ce056d78de\"",
+          "modified": "2026-10-22T14:35:47+00:00"
+        },
+        {
+          "key": "HON/2026-10-22_10-Q_0000773840-26-000143/hon-20260930_g6.jpg",
+          "size": 73760,
+          "etag": "\"83585cfc9ee65bd64627e87aee87dfbe\"",
+          "modified": "2026-10-22T14:35:47+00:00"
+        },
+        {
+          "key": "HON/2026-10-22_10-Q_0000773840-26-000143/hon-20260930_g7.jpg",
+          "size": 69950,
+          "etag": "\"49683ce209cfdf42fd2d127e63dc271a\"",
+          "modified": "2026-10-22T14:35:47+00:00"
+        },
+        {
+          "key": "HON/2026-10-22_10-Q_0000773840-26-000143/hon-20260930_g8.jpg",
+          "size": 74254,
+          "etag": "\"a2c44d017ffb323b8c25a886cb80cb78\"",
+          "modified": "2026-10-22T14:35:48+00:00"
+        },
+        {
+          "key": "HON/2026-10-22_10-Q_0000773840-26-000143/hon-20260930_g9.jpg",
+          "size": 33192,
+          "etag": "\"be38fe83323426b57519bcb3a7a71313\"",
+          "modified": "2026-10-22T14:35:48+00:00"
+        }
+      ],
+      "content_check": "All selected HTML read; size and simple ETag verified; EPS terminology present. Gold labels remain unreviewed."
+    },
+    {
+      "ticker": "IBKR",
+      "company": "Interactive Brokers",
+      "sector": "Financials",
+      "cohort": "new_37",
+      "form": "8-K",
+      "prefix": "IBKR/2026-10-15_8-K_0001381197-26-000154/",
+      "reason": "Electronic brokerage; reported and adjusted EPS without classifying it as an IT company.",
+      "review_status": "unreviewed",
+      "s3_uri": "s3://finbot-prod-state-artifacts82dd59a1-8gt63rcgmaua/IBKR/2026-10-15_8-K_0001381197-26-000154/",
+      "filed_date": "2026-10-15",
+      "accession": "0001381197-26-000154",
+      "html_count": 2,
+      "image_count": 0,
+      "bytes": 1555731,
+      "foreign_issuer": false,
+      "domicile": "United States",
+      "currency_review_focus": [
+        "USD"
+      ],
+      "tech_or_digital": false,
+      "market_cap_snapshot": null,
+      "objects": [
+        {
+          "key": "IBKR/2026-10-15_8-K_0001381197-26-000154/ibkr-20261015.htm",
+          "size": 53377,
+          "etag": "\"0c970e7d7fe5699543ffeb016d25e353\"",
+          "modified": "2026-10-15T20:02:08+00:00",
+          "content_sha256": "0e64f8392010107e6c4cec33d4308407111265d719657b59a6f22f297bf83261"
+        },
+        {
+          "key": "IBKR/2026-10-15_8-K_0001381197-26-000154/ibkr-ex99_1.htm",
+          "size": 1502354,
+          "etag": "\"369f18ae039238d414a0402b5897b5e9\"",
+          "modified": "2026-10-15T20:02:08+00:00",
+          "content_sha256": "c0958d07498a2f874d48327a43d26d27ada83699bd1035f03370fc44169e5e59"
+        }
+      ],
+      "content_check": "All selected HTML read; size and simple ETag verified; EPS terminology present. Gold labels remain unreviewed."
+    },
+    {
+      "ticker": "IBM",
+      "company": "IBM",
+      "sector": "Information technology",
+      "cohort": "new_37",
+      "form": "8-K",
+      "prefix": "IBM/2026-10-21_8-K_0000051143-26-000093/",
+      "reason": "Enterprise technology; GAAP versus operating/non-GAAP presentation.",
+      "review_status": "unreviewed",
+      "s3_uri": "s3://finbot-prod-state-artifacts82dd59a1-8gt63rcgmaua/IBM/2026-10-21_8-K_0000051143-26-000093/",
+      "filed_date": "2026-10-21",
+      "accession": "0000051143-26-000093",
+      "html_count": 2,
+      "image_count": 0,
+      "bytes": 684902,
+      "foreign_issuer": false,
+      "domicile": "United States",
+      "currency_review_focus": [
+        "USD"
+      ],
+      "tech_or_digital": true,
+      "market_cap_snapshot": null,
+      "objects": [
+        {
+          "key": "IBM/2026-10-21_8-K_0000051143-26-000093/ibm-20261021.htm",
+          "size": 76056,
+          "etag": "\"9d7bf27971bdea0c44b86cc2b5e61055\"",
+          "modified": "2026-10-21T20:20:42+00:00",
+          "content_sha256": "bd037fa544c39b131a4540afa0bf3aebb8e0cbfed7392d0fe170bcc86230fc5f"
+        },
+        {
+          "key": "IBM/2026-10-21_8-K_0000051143-26-000093/ibm-20261021xex991.htm",
+          "size": 608846,
+          "etag": "\"34597234d0baa01a17d93f8404f857de\"",
+          "modified": "2026-10-21T20:20:43+00:00",
+          "content_sha256": "bcc744d484e241de267f3c237980db288cfc438eaddb37a0ed15ac9c85895f23"
+        }
+      ],
+      "content_check": "All selected HTML read; size and simple ETag verified; EPS terminology present. Gold labels remain unreviewed."
+    },
+    {
+      "ticker": "INDB",
+      "company": "Independent Bank",
+      "sector": "Financials",
+      "cohort": "new_37",
+      "form": "8-K",
+      "prefix": "INDB/2026-10-15_8-K_0000776901-26-000152/",
+      "reason": "Smaller regional bank; current/prior quarter and adjusted results.",
+      "review_status": "unreviewed",
+      "s3_uri": "s3://finbot-prod-state-artifacts82dd59a1-8gt63rcgmaua/INDB/2026-10-15_8-K_0000776901-26-000152/",
+      "filed_date": "2026-10-15",
+      "accession": "0000776901-26-000152",
+      "html_count": 2,
+      "image_count": 0,
+      "bytes": 1153428,
+      "foreign_issuer": false,
+      "domicile": "United States",
+      "currency_review_focus": [
+        "USD"
+      ],
+      "tech_or_digital": false,
+      "market_cap_snapshot": {
+        "value_usd": 3820000000,
+        "as_of_date": "2026-10-21",
+        "source_url": "https://stockanalysis.com/stocks/indb/market-cap/"
+      },
+      "objects": [
+        {
+          "key": "INDB/2026-10-15_8-K_0000776901-26-000152/exhibit991-indb09x30x2026e.htm",
+          "size": 1119453,
+          "etag": "\"37e6c35fb5bc4149c4ebfc249a82d191\"",
+          "modified": "2026-10-15T20:15:43+00:00",
+          "content_sha256": "997bc27a34ca5f53274407d89ff7f5fb428a9e79cd018be8cadb9024243ff179"
+        },
+        {
+          "key": "INDB/2026-10-15_8-K_0000776901-26-000152/indb-20261015.htm",
+          "size": 33975,
+          "etag": "\"46f920287a576b38343200ef2077cb49\"",
+          "modified": "2026-10-15T20:15:42+00:00",
+          "content_sha256": "ef74e65db5c56d67767b7bcf9ce62b780198125b4d9d1e8f5ea3ab7651a78207"
+        }
+      ],
+      "content_check": "All selected HTML read; size and simple ETag verified; EPS terminology present. Gold labels remain unreviewed."
+    },
+    {
+      "ticker": "JBHT",
+      "company": "J.B. Hunt",
+      "sector": "Industrials",
+      "cohort": "new_37",
+      "form": "8-K",
+      "prefix": "JBHT/2026-10-15_8-K_0001437749-26-032715/",
+      "reason": "Trucking and logistics; broadens non-bank, non-tech coverage.",
+      "review_status": "unreviewed",
+      "s3_uri": "s3://finbot-prod-state-artifacts82dd59a1-8gt63rcgmaua/JBHT/2026-10-15_8-K_0001437749-26-032715/",
+      "filed_date": "2026-10-15",
+      "accession": "0001437749-26-032715",
+      "html_count": 2,
+      "image_count": 0,
+      "bytes": 695825,
+      "foreign_issuer": false,
+      "domicile": "United States",
+      "currency_review_focus": [
+        "USD"
+      ],
+      "tech_or_digital": false,
+      "market_cap_snapshot": null,
+      "objects": [
+        {
+          "key": "JBHT/2026-10-15_8-K_0001437749-26-032715/ex_1025956.htm",
+          "size": 654927,
+          "etag": "\"838fd2c43d4483f2345a118a75fffa31\"",
+          "modified": "2026-10-15T20:24:25+00:00",
+          "content_sha256": "f62509250dd13ae187e3cc7ad9b53b194caaf973c4902a396025d0b3ae6d5c25"
+        },
+        {
+          "key": "JBHT/2026-10-15_8-K_0001437749-26-032715/jbht20261014_8k.htm",
+          "size": 40898,
+          "etag": "\"6697782b0b4e312e452e088bbb178da8\"",
+          "modified": "2026-10-15T20:24:24+00:00",
+          "content_sha256": "62e1b57bb06382b13534b1c5e7335ca03d9d7e2e749ec298b5ca3dfdcc038692"
+        }
+      ],
+      "content_check": "All selected HTML read; size and simple ETag verified; EPS terminology present. Gold labels remain unreviewed."
+    },
+    {
+      "ticker": "LRCX",
+      "company": "Lam Research",
+      "sector": "Information technology",
+      "cohort": "new_37",
+      "form": "8-K",
+      "prefix": "LRCX/2026-10-21_8-K_0000707549-26-000052/",
+      "reason": "Semiconductor equipment; fiscal Q1 FY2027 and GAAP/non-GAAP EPS.",
+      "review_status": "unreviewed",
+      "s3_uri": "s3://finbot-prod-state-artifacts82dd59a1-8gt63rcgmaua/LRCX/2026-10-21_8-K_0000707549-26-000052/",
+      "filed_date": "2026-10-21",
+      "accession": "0000707549-26-000052",
+      "html_count": 2,
+      "image_count": 0,
+      "bytes": 322183,
+      "foreign_issuer": false,
+      "domicile": "United States",
+      "currency_review_focus": [
+        "USD"
+      ],
+      "tech_or_digital": true,
+      "market_cap_snapshot": null,
+      "objects": [
+        {
+          "key": "LRCX/2026-10-21_8-K_0000707549-26-000052/lrcx-20261021.htm",
+          "size": 36989,
+          "etag": "\"e922e3b495f792a6f23bdc64e4d8a6b0\"",
+          "modified": "2026-10-21T20:14:59+00:00",
+          "content_sha256": "2a29921f0915ecad650dbfb70902a61f242d33d9975be36765722a273d3e8474"
+        },
+        {
+          "key": "LRCX/2026-10-21_8-K_0000707549-26-000052/lrcx_exhibitx991xq1x2027.htm",
+          "size": 285194,
+          "etag": "\"109fe46a8e19a379f1de8895c132c692\"",
+          "modified": "2026-10-21T20:15:00+00:00",
+          "content_sha256": "b4ca6e79094ac4fd5e7f59fbe9ce5db207d04eaa3bee4f879f0fc59d384863a8"
+        }
+      ],
+      "content_check": "All selected HTML read; size and simple ETag verified; EPS terminology present. Gold labels remain unreviewed."
+    },
+    {
+      "ticker": "META",
+      "company": "Meta Platforms",
+      "sector": "Communication services",
+      "cohort": "new_37",
+      "form": "8-K",
+      "prefix": "META/2026-10-21_8-K_0001628280-26-066700/",
+      "reason": "Large digital platform; reported EPS plus tax-related counterfactual EPS need careful scope review.",
+      "review_status": "unreviewed",
+      "s3_uri": "s3://finbot-prod-state-artifacts82dd59a1-8gt63rcgmaua/META/2026-10-21_8-K_0001628280-26-066700/",
+      "filed_date": "2026-10-21",
+      "accession": "0001628280-26-066700",
+      "html_count": 2,
+      "image_count": 0,
+      "bytes": 337702,
+      "foreign_issuer": false,
+      "domicile": "United States",
+      "currency_review_focus": [
+        "USD"
+      ],
+      "tech_or_digital": true,
+      "market_cap_snapshot": null,
+      "objects": [
+        {
+          "key": "META/2026-10-21_8-K_0001628280-26-066700/meta-09302026xexhibit991.htm",
+          "size": 287684,
+          "etag": "\"46993e0f1008cb4b70c50d0c1dc1cc43\"",
+          "modified": "2026-10-21T20:04:47+00:00",
+          "content_sha256": "b8674578d323d84cf8e25e5bc1b09f036581a50c187b36a772ebf6c65784004d"
+        },
+        {
+          "key": "META/2026-10-21_8-K_0001628280-26-066700/meta-20261019.htm",
+          "size": 50018,
+          "etag": "\"333db37aa6addfd59ddbe387ae6daa4e\"",
+          "modified": "2026-10-21T20:04:47+00:00",
+          "content_sha256": "aff5541aab242afa229888dd4740eab82e50868aef85665b837baec4eac2997f"
+        }
+      ],
+      "content_check": "All selected HTML read; size and simple ETag verified; EPS terminology present. Gold labels remain unreviewed."
+    },
+    {
+      "ticker": "MMM",
+      "company": "3M",
+      "sector": "Industrials",
+      "cohort": "new_37",
+      "form": "8-K",
+      "prefix": "MMM/2026-10-20_8-K_0000066740-26-000308/",
+      "reason": "Diversified industrial; reported results and earnings presentation across periods.",
+      "review_status": "unreviewed",
+      "s3_uri": "s3://finbot-prod-state-artifacts82dd59a1-8gt63rcgmaua/MMM/2026-10-20_8-K_0000066740-26-000308/",
+      "filed_date": "2026-10-20",
+      "accession": "0000066740-26-000308",
+      "html_count": 2,
+      "image_count": 0,
+      "bytes": 1147819,
+      "foreign_issuer": false,
+      "domicile": "United States",
+      "currency_review_focus": [
+        "USD"
+      ],
+      "tech_or_digital": false,
+      "market_cap_snapshot": null,
+      "objects": [
+        {
+          "key": "MMM/2026-10-20_8-K_0000066740-26-000308/mmm-20261020.htm",
+          "size": 38332,
+          "etag": "\"1835de0808e9fe0702ac149fd061c099\"",
+          "modified": "2026-10-20T10:52:24+00:00",
+          "content_sha256": "86a07b4ec3aa6f69ed2921dda1fbb302e4954ab8236be8ddea9a22fb6a882905"
+        },
+        {
+          "key": "MMM/2026-10-20_8-K_0000066740-26-000308/q32026-8kerexx991.htm",
+          "size": 1109487,
+          "etag": "\"cd788e9d40fb52c11f10d92a36a0b4e1\"",
+          "modified": "2026-10-20T10:52:25+00:00",
+          "content_sha256": "daf1df7713dd96037566641eb70a8ad034aedb6f8a8c1ca2629cbef503c6d081"
+        }
+      ],
+      "content_check": "All selected HTML read; size and simple ETag verified; EPS terminology present. Gold labels remain unreviewed."
+    },
+    {
+      "ticker": "MRSH",
+      "company": "Marsh",
+      "sector": "Financials",
+      "cohort": "new_37",
+      "form": "8-K",
+      "prefix": "MRSH/2026-10-15_8-K_0000062709-26-000256/",
+      "reason": "Insurance brokerage rather than another bank; reported and adjusted EPS.",
+      "review_status": "unreviewed",
+      "s3_uri": "s3://finbot-prod-state-artifacts82dd59a1-8gt63rcgmaua/MRSH/2026-10-15_8-K_0000062709-26-000256/",
+      "filed_date": "2026-10-15",
+      "accession": "0000062709-26-000256",
+      "html_count": 2,
+      "image_count": 0,
+      "bytes": 728243,
+      "foreign_issuer": false,
+      "domicile": "United States",
+      "currency_review_focus": [
+        "USD"
+      ],
+      "tech_or_digital": false,
+      "market_cap_snapshot": null,
+      "objects": [
+        {
+          "key": "MRSH/2026-10-15_8-K_0000062709-26-000256/mmc-20261015.htm",
+          "size": 34613,
+          "etag": "\"d15aae5472aec703f5eea6400ed3a032\"",
+          "modified": "2026-10-15T12:06:22+00:00",
+          "content_sha256": "3236b51994f13ea5a77e574abb1e2fc4293d4bbf360106732d496c8751db42f8"
+        },
+        {
+          "key": "MRSH/2026-10-15_8-K_0000062709-26-000256/mmc3q2026ex991newsrelease.htm",
+          "size": 693630,
+          "etag": "\"6e01bffd7baa23e8b2c1c88be357d8ec\"",
+          "modified": "2026-10-15T12:06:23+00:00",
+          "content_sha256": "bdc581463bee2e07181a643b6e419ecfe20fda96aea3229f5a44d5ae234d0361"
+        }
+      ],
+      "content_check": "All selected HTML read; size and simple ETag verified; EPS terminology present. Gold labels remain unreviewed."
+    },
+    {
+      "ticker": "NFLX",
+      "company": "Netflix",
+      "sector": "Communication services",
+      "cohort": "new_37",
+      "form": "10-Q",
+      "prefix": "NFLX/2026-10-21_10-Q_0001065280-26-000291/",
+      "reason": "Digital media; use the stored 10-Q because the 8-K lacks its shareholder-letter exhibit.",
+      "review_status": "unreviewed",
+      "s3_uri": "s3://finbot-prod-state-artifacts82dd59a1-8gt63rcgmaua/NFLX/2026-10-21_10-Q_0001065280-26-000291/",
+      "filed_date": "2026-10-21",
+      "accession": "0001065280-26-000291",
+      "html_count": 1,
+      "image_count": 0,
+      "bytes": 1820105,
+      "foreign_issuer": false,
+      "domicile": "United States",
+      "currency_review_focus": [
+        "USD"
+      ],
+      "tech_or_digital": true,
+      "market_cap_snapshot": null,
+      "objects": [
+        {
+          "key": "NFLX/2026-10-21_10-Q_0001065280-26-000291/nflx-20260930.htm",
+          "size": 1820105,
+          "etag": "\"847ac7ef9c48469db68f18f33fc6bad8\"",
+          "modified": "2026-10-21T20:05:50+00:00",
+          "content_sha256": "75c256a7801a5f6465cfab9aba93dee6dddfb89634f1c78d57464cd7e4f6fbc2"
+        }
+      ],
+      "content_check": "All selected HTML read; size and simple ETag verified; EPS terminology present. Gold labels remain unreviewed."
+    },
+    {
+      "ticker": "NOC",
+      "company": "Northrop Grumman",
+      "sector": "Industrials",
+      "cohort": "new_37",
+      "form": "8-K",
+      "prefix": "NOC/2026-10-20_8-K_0001133421-26-000037/",
+      "reason": "Defense manufacturer; historical results versus forward guidance.",
+      "review_status": "unreviewed",
+      "s3_uri": "s3://finbot-prod-state-artifacts82dd59a1-8gt63rcgmaua/NOC/2026-10-20_8-K_0001133421-26-000037/",
+      "filed_date": "2026-10-20",
+      "accession": "0001133421-26-000037",
+      "html_count": 2,
+      "image_count": 0,
+      "bytes": 550681,
+      "foreign_issuer": false,
+      "domicile": "United States",
+      "currency_review_focus": [
+        "USD"
+      ],
+      "tech_or_digital": false,
+      "market_cap_snapshot": null,
+      "objects": [
+        {
+          "key": "NOC/2026-10-20_8-K_0001133421-26-000037/noc-09302026xearningsrelea.htm",
+          "size": 521517,
+          "etag": "\"77f09204b2dfe007975f15f627766c85\"",
+          "modified": "2026-10-20T10:33:16+00:00",
+          "content_sha256": "139fcf430e719f5ee553cf17991ffe2c1765a69c647b28cc4279994c2729b697"
+        },
+        {
+          "key": "NOC/2026-10-20_8-K_0001133421-26-000037/noc-20261020.htm",
+          "size": 29164,
+          "etag": "\"98805922ece456f845cd025e7966afdd\"",
+          "modified": "2026-10-20T10:33:15+00:00",
+          "content_sha256": "ed2a2c7f1472039ed3cd7786c8184383135e66cb253f5962617f43db4c9a8a98"
+        }
+      ],
+      "content_check": "All selected HTML read; size and simple ETag verified; EPS terminology present. Gold labels remain unreviewed."
+    },
+    {
+      "ticker": "NRIX",
+      "company": "Nurix Therapeutics",
+      "sector": "Health care",
+      "cohort": "new_37",
+      "form": "10-Q",
+      "prefix": "NRIX/2026-10-13_10-Q_0001549595-26-000049/",
+      "reason": "Smaller biotech; current profit versus prior losses and off-calendar fiscal Q3.",
+      "review_status": "unreviewed",
+      "s3_uri": "s3://finbot-prod-state-artifacts82dd59a1-8gt63rcgmaua/NRIX/2026-10-13_10-Q_0001549595-26-000049/",
+      "filed_date": "2026-10-13",
+      "accession": "0001549595-26-000049",
+      "html_count": 1,
+      "image_count": 0,
+      "bytes": 1663556,
+      "foreign_issuer": false,
+      "domicile": "United States",
+      "currency_review_focus": [
+        "USD"
+      ],
+      "tech_or_digital": false,
+      "market_cap_snapshot": {
+        "value_usd": 2840000000,
+        "as_of_date": "2026-10-21",
+        "source_url": "https://stockanalysis.com/stocks/nrix/market-cap/"
+      },
+      "objects": [
+        {
+          "key": "NRIX/2026-10-13_10-Q_0001549595-26-000049/nrix-20260831.htm",
+          "size": 1663556,
+          "etag": "\"0ed0e444bf7453f0b7d7979b3de4309b\"",
+          "modified": "2026-10-13T11:00:18+00:00",
+          "content_sha256": "cebaed888284b3f1284474f22cb19aa71c4afc1a744cc08c730f1118155a132c"
+        }
+      ],
+      "content_check": "All selected HTML read; size and simple ETag verified; EPS terminology present. Gold labels remain unreviewed."
+    },
+    {
+      "ticker": "PG",
+      "company": "Procter & Gamble",
+      "sector": "Consumer staples",
+      "cohort": "new_37",
+      "form": "10-Q",
+      "prefix": "PG/2026-10-22_10-Q_0000080424-26-000256/",
+      "reason": "Consumer products; fiscal Q1 FY2027; stored 8-K lacks its earnings exhibit.",
+      "review_status": "unreviewed",
+      "s3_uri": "s3://finbot-prod-state-artifacts82dd59a1-8gt63rcgmaua/PG/2026-10-22_10-Q_0000080424-26-000256/",
+      "filed_date": "2026-10-22",
+      "accession": "0000080424-26-000256",
+      "html_count": 1,
+      "image_count": 0,
+      "bytes": 1066746,
+      "foreign_issuer": false,
+      "domicile": "United States",
+      "currency_review_focus": [
+        "USD"
+      ],
+      "tech_or_digital": false,
+      "market_cap_snapshot": null,
+      "objects": [
+        {
+          "key": "PG/2026-10-22_10-Q_0000080424-26-000256/pg-20260930.htm",
+          "size": 1066746,
+          "etag": "\"e9506872d82566970f185aa52071bdfe\"",
+          "modified": "2026-10-22T20:20:49+00:00",
+          "content_sha256": "d984e67553cc56efc6b57fe06138e65d5b21d2df97ba73fbc0c27845d2847dca"
+        }
+      ],
+      "content_check": "All selected HTML read; size and simple ETag verified; EPS terminology present. Gold labels remain unreviewed."
+    },
+    {
+      "ticker": "PM",
+      "company": "Philip Morris International",
+      "sector": "Consumer staples",
+      "cohort": "new_37",
+      "form": "8-K",
+      "prefix": "PM/2026-10-21_8-K_0001628280-26-066596/",
+      "reason": "Consumer staples; distinguish reported/adjusted results, currency-neutral variants and guidance.",
+      "review_status": "unreviewed",
+      "s3_uri": "s3://finbot-prod-state-artifacts82dd59a1-8gt63rcgmaua/PM/2026-10-21_8-K_0001628280-26-066596/",
+      "filed_date": "2026-10-21",
+      "accession": "0001628280-26-066596",
+      "html_count": 2,
+      "image_count": 0,
+      "bytes": 409369,
+      "foreign_issuer": false,
+      "domicile": "United States",
+      "currency_review_focus": [
+        "USD"
+      ],
+      "tech_or_digital": false,
+      "market_cap_snapshot": null,
+      "objects": [
+        {
+          "key": "PM/2026-10-21_8-K_0001628280-26-066596/earningsreleasepm-ex991xq3.htm",
+          "size": 342932,
+          "etag": "\"782e6e715a0ac9c098b5cbaa21035a7c\"",
+          "modified": "2026-10-21T11:08:03+00:00",
+          "content_sha256": "3c519922bae8c80422771d03e417493e547d1eb644890d7cbfd616efbfbf103d"
+        },
+        {
+          "key": "PM/2026-10-21_8-K_0001628280-26-066596/pm-20261021.htm",
+          "size": 66437,
+          "etag": "\"6d26c6ab64f44cc034cef5a611b21c55\"",
+          "modified": "2026-10-21T11:08:03+00:00",
+          "content_sha256": "873e0a21ee07499cc1f90d013048beb92de3930ee26e4a0d6cd8100ca4082f92"
+        }
+      ],
+      "content_check": "All selected HTML read; size and simple ETag verified; EPS terminology present. Gold labels remain unreviewed."
+    },
+    {
+      "ticker": "SCHW",
+      "company": "Charles Schwab",
+      "sector": "Financials",
+      "cohort": "new_37",
+      "form": "8-K",
+      "prefix": "SCHW/2026-10-15_8-K_0000316709-26-000035/",
+      "reason": "Brokerage; GAAP and adjusted EPS.",
+      "review_status": "unreviewed",
+      "s3_uri": "s3://finbot-prod-state-artifacts82dd59a1-8gt63rcgmaua/SCHW/2026-10-15_8-K_0000316709-26-000035/",
+      "filed_date": "2026-10-15",
+      "accession": "0000316709-26-000035",
+      "html_count": 2,
+      "image_count": 0,
+      "bytes": 1069501,
+      "foreign_issuer": false,
+      "domicile": "United States",
+      "currency_review_focus": [
+        "USD"
+      ],
+      "tech_or_digital": false,
+      "market_cap_snapshot": null,
+      "objects": [
+        {
+          "key": "SCHW/2026-10-15_8-K_0000316709-26-000035/a3q26exhibit991.htm",
+          "size": 1039024,
+          "etag": "\"13d46beaaf13c3a4625c77d742a56db8\"",
+          "modified": "2026-10-15T20:30:10+00:00",
+          "content_sha256": "13da39faae420ca5f876a8dfb0af0ce8bbc1a8cd40d2734c9da40ed252378af2"
+        },
+        {
+          "key": "SCHW/2026-10-15_8-K_0000316709-26-000035/schw-20261015.htm",
+          "size": 30477,
+          "etag": "\"acf1f8943f8deac85fa8f0fead93522f\"",
+          "modified": "2026-10-15T20:30:09+00:00",
+          "content_sha256": "2b19c7053583118aac80c11f1323e9b38002f55644d82685dbfb79d74844e05c"
+        }
+      ],
+      "content_check": "All selected HTML read; size and simple ETag verified; EPS terminology present. Gold labels remain unreviewed."
+    },
+    {
+      "ticker": "SFNC",
+      "company": "Simmons First National",
+      "sector": "Financials",
+      "cohort": "new_37",
+      "form": "8-K",
+      "prefix": "SFNC/2026-10-15_8-K_0001193125-26-422936/",
+      "reason": "Smaller regional bank; multiple periods and reported/adjusted reconciliation.",
+      "review_status": "unreviewed",
+      "s3_uri": "s3://finbot-prod-state-artifacts82dd59a1-8gt63rcgmaua/SFNC/2026-10-15_8-K_0001193125-26-422936/",
+      "filed_date": "2026-10-15",
+      "accession": "0001193125-26-422936",
+      "html_count": 2,
+      "image_count": 0,
+      "bytes": 1255705,
+      "foreign_issuer": false,
+      "domicile": "United States",
+      "currency_review_focus": [
+        "USD"
+      ],
+      "tech_or_digital": false,
+      "market_cap_snapshot": {
+        "value_usd": 3190000000,
+        "as_of_date": "2026-10-16",
+        "source_url": "https://stockanalysis.com/stocks/sfnc/market-cap/"
+      },
+      "objects": [
+        {
+          "key": "SFNC/2026-10-15_8-K_0001193125-26-422936/d439916d8k.htm",
+          "size": 26681,
+          "etag": "\"84f83b1921d5a339fd014788f8d2d1e1\"",
+          "modified": "2026-10-15T20:31:27+00:00",
+          "content_sha256": "ddc0317877715a2e4f9c8b1945273c829f09a3681a9e6770c64232f23bf9b05c"
+        },
+        {
+          "key": "SFNC/2026-10-15_8-K_0001193125-26-422936/d439916dex991.htm",
+          "size": 1229024,
+          "etag": "\"b01ba3d5aa02d91ba4b5d21373d7a132\"",
+          "modified": "2026-10-15T20:31:30+00:00",
+          "content_sha256": "8ca60e5f5d761d30c871a1e4a263966ff6a7eb233f009d7d7543bf4d919233dc"
+        }
+      ],
+      "content_check": "All selected HTML read; size and simple ETag verified; EPS terminology present. Gold labels remain unreviewed."
+    },
+    {
+      "ticker": "SPOT",
+      "company": "Spotify",
+      "sector": "Communication services",
+      "cohort": "new_37",
+      "form": "6-K",
+      "prefix": "SPOT/2026-10-22_6-K_0001628280-26-066889/",
+      "reason": "Foreign digital media; EUR statements and quarter/YTD EPS within the primary 6-K.",
+      "review_status": "unreviewed",
+      "s3_uri": "s3://finbot-prod-state-artifacts82dd59a1-8gt63rcgmaua/SPOT/2026-10-22_6-K_0001628280-26-066889/",
+      "filed_date": "2026-10-22",
+      "accession": "0001628280-26-066889",
+      "html_count": 1,
+      "image_count": 0,
+      "bytes": 1347943,
+      "foreign_issuer": true,
+      "domicile": "Luxembourg",
+      "currency_review_focus": [
+        "EUR"
+      ],
+      "tech_or_digital": true,
+      "market_cap_snapshot": null,
+      "objects": [
+        {
+          "key": "SPOT/2026-10-22_6-K_0001628280-26-066889/spot-20260930x6xk.htm",
+          "size": 1347943,
+          "etag": "\"cdd1085fb3174b9f3139ab9310c8392d\"",
+          "modified": "2026-10-22T20:30:06+00:00",
+          "content_sha256": "02e10dd3effbca3ed6ad3ef7cacb119eade38f2397d964bd9f766e5e91bfc5ff"
+        }
+      ],
+      "content_check": "All selected HTML read; size and simple ETag verified; EPS terminology present. Gold labels remain unreviewed."
+    },
+    {
+      "ticker": "T",
+      "company": "AT&T",
+      "sector": "Communication services",
+      "cohort": "new_37",
+      "form": "8-K",
+      "prefix": "T/2026-10-21_8-K_0000732717-26-000370/",
+      "reason": "Telecom operator; distinguish continuing-operations and consolidated EPS.",
+      "review_status": "unreviewed",
+      "s3_uri": "s3://finbot-prod-state-artifacts82dd59a1-8gt63rcgmaua/T/2026-10-21_8-K_0000732717-26-000370/",
+      "filed_date": "2026-10-21",
+      "accession": "0000732717-26-000370",
+      "html_count": 3,
+      "image_count": 0,
+      "bytes": 1061639,
+      "foreign_issuer": false,
+      "domicile": "United States",
+      "currency_review_focus": [
+        "USD"
+      ],
+      "tech_or_digital": false,
+      "market_cap_snapshot": null,
+      "objects": [
+        {
+          "key": "T/2026-10-21_8-K_0000732717-26-000370/t-20261021.htm",
+          "size": 85499,
+          "etag": "\"025eaaf19e865c2e52cb6423a9b17c0c\"",
+          "modified": "2026-10-21T11:30:02+00:00",
+          "content_sha256": "da84be729b3408ab44035f9eff245bed6d0ae7e69e861803cdf90e3ffd99c0f2"
+        },
+        {
+          "key": "T/2026-10-21_8-K_0000732717-26-000370/t-3q2026exhibit991.htm",
+          "size": 137062,
+          "etag": "\"9cbf6bcdb6ded8c4bd3077a0a7eb64ca\"",
+          "modified": "2026-10-21T11:30:02+00:00",
+          "content_sha256": "09c68587d638a51ec2b3c255c76bce2afeb4407caa1d82bdb974a455c75d1c31"
+        },
+        {
+          "key": "T/2026-10-21_8-K_0000732717-26-000370/t-3q2026exhibit992.htm",
+          "size": 839078,
+          "etag": "\"a93892f6bba0cc306ebe091884c1a866\"",
+          "modified": "2026-10-21T11:30:03+00:00",
+          "content_sha256": "2e68fbca8766e6d382246d2e8f23ba655174d91905d1d14ae6706d4217b98325"
+        }
+      ],
+      "content_check": "All selected HTML read; size and simple ETag verified; EPS terminology present. Gold labels remain unreviewed."
+    },
+    {
+      "ticker": "TRV",
+      "company": "Travelers",
+      "sector": "Financials",
+      "cohort": "new_37",
+      "form": "8-K",
+      "prefix": "TRV/2026-10-16_8-K_0000086312-26-000180/",
+      "reason": "Property/casualty insurance; net-income EPS versus core-income EPS terminology.",
+      "review_status": "unreviewed",
+      "s3_uri": "s3://finbot-prod-state-artifacts82dd59a1-8gt63rcgmaua/TRV/2026-10-16_8-K_0000086312-26-000180/",
+      "filed_date": "2026-10-16",
+      "accession": "0000086312-26-000180",
+      "html_count": 3,
+      "image_count": 0,
+      "bytes": 4324582,
+      "foreign_issuer": false,
+      "domicile": "United States",
+      "currency_review_focus": [
+        "USD"
+      ],
+      "tech_or_digital": false,
+      "market_cap_snapshot": null,
+      "objects": [
+        {
+          "key": "TRV/2026-10-16_8-K_0000086312-26-000180/a991pressrelease93026.htm",
+          "size": 966550,
+          "etag": "\"ee12d8be5b5ac3cd4898716990b96244\"",
+          "modified": "2026-10-16T11:25:44+00:00",
+          "content_sha256": "8357a05e595f2d7f99f249a45ac21fae7bc1ff3ac18a8ded8defd468a6631947"
+        },
+        {
+          "key": "TRV/2026-10-16_8-K_0000086312-26-000180/a992finsupp93026.htm",
+          "size": 3326551,
+          "etag": "\"23a5f88a41f5a3667bff0765bdd54713\"",
+          "modified": "2026-10-16T11:25:47+00:00",
+          "content_sha256": "5b51ff50d48c92c97f0023e7bc9b254bf816b274963ac13bb63909f0f9b34d37"
+        },
+        {
+          "key": "TRV/2026-10-16_8-K_0000086312-26-000180/trv-20261016.htm",
+          "size": 31481,
+          "etag": "\"6833abdd7d8b3b2e83fd7294118433b4\"",
+          "modified": "2026-10-16T11:25:43+00:00",
+          "content_sha256": "002d0c96515c40049af64a9c15fdd03ab7dba35bff71cf4f1a2440e0c715d6d1"
+        }
+      ],
+      "content_check": "All selected HTML read; size and simple ETag verified; EPS terminology present. Gold labels remain unreviewed."
+    },
+    {
+      "ticker": "UAL",
+      "company": "United Airlines",
+      "sector": "Industrials",
+      "cohort": "new_37",
+      "form": "8-K",
+      "prefix": "UAL/2026-10-20_8-K_0000100517-26-000184/",
+      "reason": "Airline; reported and adjusted EPS, including adjustments that can reduce reported earnings.",
+      "review_status": "unreviewed",
+      "s3_uri": "s3://finbot-prod-state-artifacts82dd59a1-8gt63rcgmaua/UAL/2026-10-20_8-K_0000100517-26-000184/",
+      "filed_date": "2026-10-20",
+      "accession": "0000100517-26-000184",
+      "html_count": 2,
+      "image_count": 0,
+      "bytes": 638636,
+      "foreign_issuer": false,
+      "domicile": "United States",
+      "currency_review_focus": [
+        "USD"
+      ],
+      "tech_or_digital": false,
+      "market_cap_snapshot": null,
+      "objects": [
+        {
+          "key": "UAL/2026-10-20_8-K_0000100517-26-000184/ual-20261020.htm",
+          "size": 39165,
+          "etag": "\"9c852a57b1565beac74ef86d63b71a97\"",
+          "modified": "2026-10-20T20:01:02+00:00",
+          "content_sha256": "7f31d601d24317d96cf5c183d006f06a353f4a1be0a54b9104bbc599d0c2f94d"
+        },
+        {
+          "key": "UAL/2026-10-20_8-K_0000100517-26-000184/ual_erx09302026xex991.htm",
+          "size": 599471,
+          "etag": "\"78edf5d746bd914cae11df464eeb63f5\"",
+          "modified": "2026-10-20T20:01:03+00:00",
+          "content_sha256": "dd0e671db222d5c37c145589fa743479282b935373618f40392e6c52eaf00c80"
+        }
+      ],
+      "content_check": "All selected HTML read; size and simple ETag verified; EPS terminology present. Gold labels remain unreviewed."
+    },
+    {
+      "ticker": "UNP",
+      "company": "Union Pacific",
+      "sector": "Industrials",
+      "cohort": "new_37",
+      "form": "8-K",
+      "prefix": "UNP/2026-10-22_8-K_0000100885-26-000319/",
+      "reason": "Railroad; reported/adjusted results and historical/guidance separation.",
+      "review_status": "unreviewed",
+      "s3_uri": "s3://finbot-prod-state-artifacts82dd59a1-8gt63rcgmaua/UNP/2026-10-22_8-K_0000100885-26-000319/",
+      "filed_date": "2026-10-22",
+      "accession": "0000100885-26-000319",
+      "html_count": 2,
+      "image_count": 0,
+      "bytes": 636827,
+      "foreign_issuer": false,
+      "domicile": "United States",
+      "currency_review_focus": [
+        "USD"
+      ],
+      "tech_or_digital": false,
+      "market_cap_snapshot": null,
+      "objects": [
+        {
+          "key": "UNP/2026-10-22_8-K_0000100885-26-000319/a2026-10x228xkex991earning.htm",
+          "size": 611634,
+          "etag": "\"def66ba48c9f904e9c81d55125d19bd4\"",
+          "modified": "2026-10-22T11:47:49+00:00",
+          "content_sha256": "131111e2e94f8116f17bab8c93f4fe995b88fd0d122eecdfde059f1f91197997"
+        },
+        {
+          "key": "UNP/2026-10-22_8-K_0000100885-26-000319/unp-20261022.htm",
+          "size": 25193,
+          "etag": "\"e66205dfec9d6834fcf5922e31f2fc6b\"",
+          "modified": "2026-10-22T11:47:49+00:00",
+          "content_sha256": "76fe049c6e81b8e04598909674a3ed65b0cde9f14d6de8ab0817c794f9415472"
+        }
+      ],
+      "content_check": "All selected HTML read; size and simple ETag verified; EPS terminology present. Gold labels remain unreviewed."
+    },
+    {
+      "ticker": "WDC",
+      "company": "Western Digital",
+      "sector": "Information technology",
+      "cohort": "new_37",
+      "form": "8-K",
+      "prefix": "WDC/2026-10-22_8-K_0001628280-26-066882/",
+      "reason": "Storage hardware; fiscal Q1 FY2027 and GAAP/non-GAAP EPS.",
+      "review_status": "unreviewed",
+      "s3_uri": "s3://finbot-prod-state-artifacts82dd59a1-8gt63rcgmaua/WDC/2026-10-22_8-K_0001628280-26-066882/",
+      "filed_date": "2026-10-22",
+      "accession": "0001628280-26-066882",
+      "html_count": 2,
+      "image_count": 0,
+      "bytes": 347133,
+      "foreign_issuer": false,
+      "domicile": "United States",
+      "currency_review_focus": [
+        "USD"
+      ],
+      "tech_or_digital": true,
+      "market_cap_snapshot": null,
+      "objects": [
+        {
+          "key": "WDC/2026-10-22_8-K_0001628280-26-066882/a4ex991-pressreleaseq127.htm",
+          "size": 312266,
+          "etag": "\"f35ef15eb0e794cf5fe6e79b0d52d08c\"",
+          "modified": "2026-10-22T20:05:44+00:00",
+          "content_sha256": "89a467f24623f9731f973ddbc9f402190552d46d2d9431d645a05519b8574df0"
+        },
+        {
+          "key": "WDC/2026-10-22_8-K_0001628280-26-066882/wdc-20261022.htm",
+          "size": 34867,
+          "etag": "\"92479b27c30c7038356e0d77f1542f0a\"",
+          "modified": "2026-10-22T20:05:44+00:00",
+          "content_sha256": "8210cc1399d9ba0f97d84d021233068bdeeaf07d9c25cd7a3363f41d2cf689a0"
+        }
+      ],
+      "content_check": "All selected HTML read; size and simple ETag verified; EPS terminology present. Gold labels remain unreviewed."
+    },
+    {
+      "ticker": "WIT",
+      "company": "Wipro",
+      "sector": "Information technology",
+      "cohort": "new_37",
+      "form": "6-K",
+      "prefix": "WIT/2026-10-20_6-K_0001193125-26-426841/",
+      "reason": "Foreign IT services; INR and explicit USD translations, IFRS, multiple exhibits and six-month exclusions.",
+      "review_status": "unreviewed",
+      "s3_uri": "s3://finbot-prod-state-artifacts82dd59a1-8gt63rcgmaua/WIT/2026-10-20_6-K_0001193125-26-426841/",
+      "filed_date": "2026-10-20",
+      "accession": "0001193125-26-426841",
+      "html_count": 5,
+      "image_count": 0,
+      "bytes": 2203689,
+      "foreign_issuer": true,
+      "domicile": "India",
+      "currency_review_focus": [
+        "INR",
+        "USD"
+      ],
+      "tech_or_digital": true,
+      "market_cap_snapshot": null,
+      "objects": [
+        {
+          "key": "WIT/2026-10-20_6-K_0001193125-26-426841/d188224d6k.htm",
+          "size": 12512,
+          "etag": "\"8f72d3cf018a96603f1ba466b82cbe07\"",
+          "modified": "2026-10-20T21:56:12+00:00",
+          "content_sha256": "672cb79b2c3d2a32e1ac5fe439be4bfdf7701689343cd4b3d56d88f807fc6828"
+        },
+        {
+          "key": "WIT/2026-10-20_6-K_0001193125-26-426841/d188224dex991.htm",
+          "size": 226036,
+          "etag": "\"2ca5a1c7b63274812c87edaa5044f4ba\"",
+          "modified": "2026-10-20T21:56:12+00:00",
+          "content_sha256": "f5cc71c629910bfc33a34171e8740e924ffd64426697fc9a577934366bb20c6e"
+        },
+        {
+          "key": "WIT/2026-10-20_6-K_0001193125-26-426841/d188224dex993.htm",
+          "size": 1588682,
+          "etag": "\"a6bb356d885a254af49340986b4abcf1\"",
+          "modified": "2026-10-20T21:56:13+00:00",
+          "content_sha256": "4ebcd5c2eccd4a8ebce119c5e15b1b62817ae3d8c3e7db5d6be16d761749b7d3"
+        },
+        {
+          "key": "WIT/2026-10-20_6-K_0001193125-26-426841/d188224dex994.htm",
+          "size": 368349,
+          "etag": "\"794c95cf65d7993dcbf1a96c89f97a31\"",
+          "modified": "2026-10-20T21:56:13+00:00",
+          "content_sha256": "1c0af6477607ef6e63287b0813df910184d5f0638cc9df119abf8846da4312a5"
+        },
+        {
+          "key": "WIT/2026-10-20_6-K_0001193125-26-426841/d188224dex995.htm",
+          "size": 8110,
+          "etag": "\"3d721c2dc9907b2471dabf651f4dfa6f\"",
+          "modified": "2026-10-20T21:56:13+00:00",
+          "content_sha256": "e14cc7a23eef008759c5557006234462db80e64b2d4fc91a4023ddc07047087a"
+        }
+      ],
+      "content_check": "All selected HTML read; size and simple ETag verified; EPS terminology present. Gold labels remain unreviewed."
+    }
+  ]
+}
