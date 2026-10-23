@@ -1,12 +1,14 @@
-# EPS extraction experiment report — 2026-10-22
+# EPS extraction experiment report — updated 2026-10-23
 
 ## Findings
 
-**Luna 6 through the direct OpenAI API is the strongest candidate for the next
-evaluation round.** It matched all 20 EPS targets in all 13 filings on three runs,
-with identical predictions. Its first measured run cost an estimated **$0.05445**;
-two repeats with almost entirely cached inputs cost **$0.00525–$0.00529** each.
-The three runs took 48.50–54.71 seconds of recorded extractor time.
+In the original 13-filing study, Luna 6 through the direct OpenAI API matched all
+20 EPS targets on three v4 runs, with identical predictions. Its first measured
+run cost an estimated **$0.05445**; two repeats with almost entirely cached inputs
+cost **$0.00525–$0.00529** each. The three runs took 48.50–54.71 seconds of
+recorded extractor time. A later, prompt-tuned 50-filing run matched all 83
+targets with v6; that sample is not held out and does not establish performance
+on unseen filings. See the follow-up results below.
 
 Claude Haiku 5.5, Claude Sonnet 4.6 and Kimi K3 also matched every target in one
 successful run each. Haiku cost $0.12563 and took 40.59 seconds. Sonnet was the
@@ -23,9 +25,10 @@ to prepare this report.
 
 ## Scope and measurement
 
-This report covers **18 saved full-bundle runs**, all conducted on 2026-10-22:
-16 with the fiscal v2 contract and two earlier legacy runs. Small synthetic smoke
-tests and single-request debugging probes are excluded from the full-run tables.
+The original study below covers **18 saved full-bundle runs** conducted on
+2026-10-22: 16 with the fiscal v2 contract and two earlier legacy runs. The
+50-filing follow-up was conducted on 2026-10-23 and is reported separately.
+Small synthetic smoke tests and single-request debugging probes are excluded.
 
 The 16 fiscal runs share:
 
@@ -88,6 +91,35 @@ medium reasoning/effort; Kimi retains provider-default reasoning. All use a
 4096-token maximum output budget. Tokenizers, image handling, schema transport and
 provider defaults differ. Bedrock uses US profiles or regional IDs; direct APIs
 use global processing. The source documents and v4 prompt remain aligned.
+
+## 50-filing Luna follow-up — 2026-10-23
+
+The same frozen revision of the 50 human-reviewed filings was used for both runs.
+It contains 83 fiscal EPS targets after cumulative/YTD exclusions. V4 produced 80
+correct targets, two incorrect values and one missing target (F1 97.0%; 47/50
+exact). The IBM and AT&T reported EPS predictions used continuing-operations
+values, while the reviewed labels use total diluted EPS. HON did not reach the
+provider: local input preparation incorrectly applied Bedrock's 20-image cap to
+OpenAI. Its known run cost of $0.15229 is incomplete because HON had no provider
+usage.
+
+| ID | Model / prompt | Correct / incorrect / missing / extra | F1 | Exact filings | Runtime | Estimated run cost |
+| --- | --- | --- | --- | --- | --- | --- |
+| L4 | Luna 6 / OpenAI, v4 | 80 / 2 / 1 / 0 | 97.0% | 47/50 | 144.81 s | $0.15228919*, incomplete |
+| L5 | Luna 6 / OpenAI, v6 | 83 / 0 / 0 / 0 | 100.0% | 50/50 | 164.13 s | $0.15943719, complete |
+
+The v6 prompt clarifies that when continuing-operations and total diluted EPS
+are both shown, reported EPS is the issuer's total. The OpenAI image-limit fix
+also allowed HON's 34-image filing to be processed; HON's reported EPS was
+correct. Of the 49 predictions returned in L4, 47 were unchanged in L5; IBM and
+AT&T changed to the reviewed totals. Because prompt and provider-specific input
+handling changed between these single runs, the overall improvement cannot be
+attributed to the prompt alone. The 50-filing sample was used during prompt
+development, so these results are not held-out accuracy.
+
+Full reports and request artifacts are under
+`$FINBOT_DATA_ROOT/filing-evals/runs/`:
+`20261023T135326Z-0126d7df` (L4) and `20261023T145725Z-9ff8c84b` (L5).
 
 ## Token usage and caching
 
@@ -282,6 +314,8 @@ prompts, source membership and implementation hashes.
 | H1 | `20261022T232904Z-c1870c56` | Haiku 5.5 v4 / Anthropic, fixed adapter |
 | L2 | `20261022T233524Z-ef3fe165` | Luna 6 v4 / OpenAI, cached repeat |
 | L3 | `20261022T233620Z-c8266d77` | Luna 6 v4 / OpenAI, cached repeat |
+| L4 | `20261023T135326Z-0126d7df` | Luna 6 v4 / OpenAI, 50-filing run; incomplete after local HON image-limit failure |
+| L5 | `20261023T145725Z-9ff8c84b` | Luna 6 v6 / OpenAI, 50-filing follow-up |
 
 Read-only comparison from the package root:
 
@@ -307,15 +341,16 @@ prompt's accuracy, latency or cost.
 
 ## Recommended next experiments
 
-Advance Luna 6 with unchanged v4 plain-text/image inputs to a larger, newly
-reviewed set. Use Haiku as a second direct-provider comparator and Nova as the
-historical reference. Keep the next set separate from prompt tuning. Measure
-fresh-document costs separately from cache-hit repeats, retaining per-request
-usage, failures and exact-filing results.
+Freeze v6 and evaluate it on a separate, newly reviewed set that was not used for
+prompt development. Keep prompt changes and provider/input-handling changes
+separate in future comparisons. Retain v4 as the historical baseline, use Haiku
+as a second direct-provider comparator and Nova as the historical reference, and
+measure fresh-document costs separately from cache-hit repeats.
 
-The present sample was repeatedly used for prompt development and model selection;
-there is no held-out validation. Most alternatives have only one successful run.
+Both the original 13-filing sample and the 50-filing follow-up were used for
+prompt development and model selection; there is no held-out validation. Most
+alternatives have only one successful run.
 Provider/adapter differences and limited repeats prevent a general claim that
 one underlying model is best. Luna's three perfect runs justify further testing;
-expanding reviewed coverage is now more informative than repeating only these
-13 filings. The Streamlit evaluation screen remains deferred.
+expanding reviewed coverage is now more informative than repeating these same
+50 filings.

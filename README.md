@@ -5,54 +5,26 @@ collected by `finbot-filings`, correcting reported/adjusted diluted EPS labels,
 and confirming a golden dataset. A separate CLI evaluates EPS extractors against
 that human-reviewed dataset and compares saved runs.
 
-**Evaluation:** Luna 6 through the direct OpenAI API matched all 20 targets in
-three runs and is the leading candidate for broader testing. Use the **v4 prompt,
-plain-text HTML extraction and original images**; Nova 2 Lite through Bedrock
-remains the historical baseline. See the [experiment report](docs/MODEL_EXPERIMENT_REPORT.md)
-for accuracy, runtime, token usage, cache effects and estimated costs across all
-18 saved runs. Raw/cleaned HTML and other prompts remain available. Runs freeze reviewed
-inputs and write Markdown, JSON and Parquet reports. See
-[EPS extraction evaluation](#eps-extraction-evaluation) and the
-[earlier Nova tuning record](docs/EVALUATION_EXPERIMENTS.md).
-The Streamlit evaluation screen is a future roadmap item; the review UI is unchanged.
+**Latest evaluation:** GPT-6 Luna through the OpenAI API, using prompt v6, matched
+all 83 fiscal targets across the 50 reviewed filings (50/50 exact; 100% F1).
+This follow-up also evaluated HON's 34-image filing after removing a Bedrock-only
+image cap from OpenAI input preparation. The 50-case sample was used during prompt
+development, so this is not held-out accuracy. Earlier, Luna v4 matched all 20
+targets in each of three runs on the original 13 filings. See the
+[experiment report](docs/MODEL_EXPERIMENT_REPORT.md) for results, run IDs, token
+usage, runtime, cache effects and estimated costs. Nova 2 Lite through Bedrock
+remains the historical baseline. Runs freeze reviewed inputs and write Markdown,
+JSON and Parquet reports. Raw/cleaned HTML and earlier prompt experiments remain
+available.
 
 ![EPS review UI showing saved filing progress, an ASML document, the EPS editor and review notes](docs/images/eps-review-ui.png)
 
 ASML filing review in Firefox, captured from a disposable dataset copy.
 
-**Current state:** Steps 1–7 are complete. A local Streamlit app loads and
-validates the document EPS draft dataset, with filing/attachment selectors,
-isolated formatted HTML viewing, readable text fallback, original-file downloads,
-EPS editing, row validation, review notes, saved status and **Save changes**.
-Saves and confirmation include backups, synchronized exports, integrity refresh
-and restart-safe recovery. **Confirm and next**, previous/next navigation and
-Save/Discard/Stay guards are available. Saved review progress and automatic catalog
-refresh for canonical saves are implemented, with durable pending status and retry.
-The complete review workflow has been verified in Firefox on a disposable bundle
-copy, including restart, stale-save refusal and interrupted-save recovery.
-See [the operating checklist](docs/REVIEW_QA.md) for repeatable verification.
-The previous screenshot pipeline has been removed.
-
-## Start a new implementation session
-
-Read [ROADMAP.md](ROADMAP.md) for the agreed contracts, sequential steps,
-prerequisites, acceptance checks and handoff records. Work on the first incomplete
-step after verifying its predecessors. Each session must add focused tests,
-run the package checks below, and update the roadmap's status and handoff before
-stopping. Update this README as each new command or feature becomes available.
-No earlier conversation or temporary build script is required. These seven steps
-describe the completed review UI; the separate evaluation handoff is also in the roadmap.
-
-Keep review app code under `src/finbot_filing_evals/review/`, with the thin
-entry point `scripts/review_eps.py`. The former `golden_dataset/` package and
-its tests, prompts, schemas and provider adapters have been removed. Preserve
-unrelated uncommitted changes.
-Use local files; no model calls, AWS access, downloads, sibling-package imports,
-or changes to `finbot-dashboard` are needed for the review UI. Catalog refresh
-uses the sibling repository's CLI as a subprocess, without importing its code.
-Evaluation code belongs under `src/finbot_filing_evals/evaluation/`. Its explicit
-CLI runs may call Bedrock, OpenAI or Anthropic; opening the review app never imports a provider SDK
-or invokes a model. Evaluation does not recreate the former screenshot pipeline.
+The review UI edits and confirms the filing labels; evaluation is a separate,
+explicit CLI workflow that can make paid Bedrock, OpenAI or Anthropic calls.
+Opening the review UI never invokes a model. See the [review QA checklist](docs/REVIEW_QA.md)
+for the current operating workflow.
 
 ## EPS extraction evaluation
 
@@ -71,7 +43,21 @@ after 68 cumulative/YTD exclusions. No paid extractor/provider calls were used
 for annotation. See [the labeling handoff](docs/SAMPLE_50_LABELING.md) and
 [the import handoff](docs/SAMPLE_50_IMPORT.md) for verification and provenance.
 
-Run the GPT-6 Luna v4 experiment against all 50 reviewed filings from this repo:
+The completed sample-50 v6 run scored **83/83 targets correct**, with no
+extraction errors and all 50 filings exact. The v6 prompt clarifies that reported
+EPS uses the explicitly disclosed total when both continuing-operations and
+total diluted EPS are shown. Run artifacts are stored under
+`$FINBOT_DATA_ROOT/filing-evals/runs/20261023T145725Z-9ff8c84b/`.
+
+The sample-50 v4 run is the baseline comparison. Its 47 exact filings included
+two continuing-operations values where the reviewed targets use total EPS; HON
+failed locally because an AWS Bedrock image limit was also applied to OpenAI.
+After that provider-specific limit was fixed, v6 processed HON's 34 images.
+Among v4's 49 returned predictions, 47 were unchanged in v6; IBM and AT&T now
+match the reviewed total EPS. The sample was used for prompt development, so
+these results are not held-out accuracy.
+
+Repeat the GPT-6 Luna v4 baseline against all 50 reviewed filings from this repo:
 
 ```bash
 export FINBOT_DATA_ROOT=/Users/ilan/workspace/finbot/data
@@ -101,8 +87,8 @@ Open that bundle in the labeling UI with an explicit path:
   --dataset-root /Users/ilan/workspace/finbot/data/filing-evals/golden/earnings-eps-50-v1
 ```
 
-Select **AA** to start the first addition, or **HON** for the 34-image 10-Q.
-The original 13-case bundle, default UI path and evaluation configs are preserved.
+Select any filing to inspect its sources and labels, or **HON** for the 34-image
+10-Q. The original 13-case bundle, default UI path and evaluation configs are preserved.
 The new bundle requires the explicit path above; automatic catalog refresh is
 disabled for this noncanonical path. After labeling sessions, refresh it with:
 
@@ -191,6 +177,27 @@ these results support the current baseline choice, not a claim of guaranteed
 accuracy or performance on unseen filings. The same small sample was used for
 prompt tuning, with no held-out validation.
 
+### 50-filing Luna follow-up
+
+The follow-up used the 50 human-reviewed filings and the same frozen dataset
+revision for both runs. V4 produced 80 correct targets, two incorrect values and
+one missing target (F1 97.0%; 47/50 exact). The two incorrect reported EPS values
+were IBM and AT&T: both selected continuing-operations EPS rather than the
+explicitly reported total. HON did not reach OpenAI because local input
+preparation incorrectly enforced Bedrock's 20-image limit. V4's known cost was
+$0.15229, incomplete because HON had no provider usage.
+
+With that OpenAI image check corrected and the new v6 scope clarification, Luna
+returned all 83 targets correctly (100% F1; 50/50 exact) with complete estimated
+cost of $0.15944 and 164.13 seconds of extractor time. HON's reported EPS was
+correct from its 34-image filing. Across the 49 v4 predictions that were
+returned, 47 stayed identical; only IBM and AT&T changed, both to the reviewed
+total EPS. This is consistent with the prompt clarification resolving those two
+errors, while the HON improvement came from the separate provider-limit fix.
+These are single runs on a sample used for prompt development, not held-out
+validation. Full artifacts are under `$FINBOT_DATA_ROOT/filing-evals/runs/`:
+`20261023T135326Z-0126d7df` (v4) and `20261023T145725Z-9ff8c84b` (v6).
+
 See the [full experiment report](docs/MODEL_EXPERIMENT_REPORT.md) for subsequent
 model comparisons, including three perfect Luna runs and perfect Sonnet, Kimi
 and Haiku runs. Its cost tables distinguish cache hits, partial usage and
@@ -215,6 +222,8 @@ its filename has been retained for reproducibility and does not select v4.
 | `bedrock-mistral-large-3-prompt-v4.json` | v4 | Plain text | Evaluated: all requests/output parsing failed |
 | `bedrock-qwen3-vl-235b-prompt-v4.json` | v4 | Plain text | Evaluated: 78.8% F1, 9/13 exact filings |
 | `openai-luna-6-prompt-v4.json` | v4 | Plain text | Direct OpenAI Responses; requires OPENAI_API_KEY |
+| `openai-luna-6-prompt-v4-sample-50.json` | v4 | Plain text | 50-filing baseline run |
+| `openai-luna-6-prompt-v6-sample-50.json` | v6 | Plain text | 50-filing follow-up; total diluted EPS clarification |
 | `anthropic-haiku-5-5-prompt-v4.json` | v4 | Plain text | Direct Anthropic Messages; requires ANTHROPIC_API_KEY |
 
 ### Direct OpenAI and Anthropic APIs
@@ -256,9 +265,10 @@ on three runs; Haiku matched 13/13 after the unsupported-speed fix.
 Only the selected provider's key is required. Missing/blank keys stop before
 inference with the variable name in the error. Offline `--predictions` scoring
 requires neither keys nor a provider client. Both providers reuse the same reviewed
-snapshots, v4 prompt, original images, HTML input modes and fiscal v2 scoring.
+snapshots, original images, HTML input modes and fiscal v2 scoring. The original
+13-filing experiments use v4; the 50-filing follow-up compares v4 with v6.
 Legacy v1 labels are not supported by these direct adapters. Use the existing
-`compare` command with the saved Nova or other compatible fiscal v2 run.
+`compare` command with a saved fiscal v2 run.
 
 OpenAI uses `gpt-6-luna` on the Responses API with strict JSON-schema output,
 `store: false`, disabled input truncation, Standard processing, and implicit
@@ -306,8 +316,10 @@ are included in billed output, without adding them twice. Reports currently show
 ordinary input tokens; inspect cache counters/native usage for total prompt size.
 Missing usage leaves costs unknown. Known usage/cost survives output-validation
 failures. Estimates exclude unknown retry charges and do not establish billing.
-The shared source checks retain their 20-image/64-MiB bounds; providers can impose
-stricter image/context/request-size limits, which remain visible errors.
+The shared source-size check limits total source material to 64 MiB. The
+20-image, 3.75-MB-per-image and 8,000-pixel dimension checks apply to Bedrock
+requests; OpenAI input preparation does not apply those Bedrock-specific limits.
+Each provider can still reject requests that exceed its own current limits.
 
 ### Alternative model experiments
 
@@ -1042,12 +1054,12 @@ The core loader requires `jsonschema`. The `dev` extra installs pytest; the
 optional `review` extra installs Streamlit, pandas, PyArrow, Bleach, html5lib and
 tinycss2. Install both extras for all UI and persistence checks. Loading a dataset
 does not import the UI dependencies. The
-former screenshot tests were removed; the new tests cover the dataset contract,
+former screenshot tests were removed; the tests cover the dataset contract,
 path/source validation, viewer isolation/sanitization, lossless editor conversion,
 row validation, pending edits/discard, app navigation/downloads, saves, stale writes,
 process locking, export agreement, confirmation timestamps/invalidation,
 Save/Discard/Stay navigation, last-case completion, dataset isolation and injected
-failure/restart recovery. Step 6 adds saved progress/restart/invalidation checks,
+failure/restart recovery. Coverage also includes saved progress/restart/invalidation,
 aggregate and per-row export transitions, mocked catalog success/failure/timeout,
 durable receipt/retry and canonical-path/copy safeguards.
 The full-workflow regression also covers edit/add/save/delete, guarded navigation,
@@ -1069,7 +1081,7 @@ Compile and verify the installed package:
 .venv/bin/python -c 'import finbot_filing_evals; print(finbot_filing_evals.__version__)'
 ```
 
-Run the test suite for every step:
+Run the package test suite:
 
 ```bash
 .venv/bin/python -m pytest
@@ -1094,5 +1106,5 @@ To verify the installable distribution, build a wheel outside source control:
 .venv/bin/python -m pip wheel --no-deps --wheel-dir /private/tmp/finbot-filing-evals-wheels .
 ```
 
-No previous-work archive or backup was created during cleanup. The shared data
-root, original documents and draft labels were not modified.
+The shared data root, original documents and draft labels are not modified by
+these checks.
